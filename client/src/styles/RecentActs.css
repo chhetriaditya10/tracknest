@@ -1,0 +1,41 @@
+.recentActWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  background-color: #d7e3ff;
+  border-radius: 12px;
+  width: 180px;
+}
+
+.recentActs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70px;
+}
+
+.recentActIcon {
+  width: 40px;
+}
+
+.recentAmount {
+  margin-bottom: 0px;
+  font-size: 22px;
+}
+
+@media (min-width: 768px) {
+  .recentActWrapper {
+    min-width: 280px;
+    min-height: 80px;
+    align-items: center;
+  }
+
+  .recentActIcon {
+    width: 50px;
+  }
+
+  .recentAmount {
+    font-size: 30px;
+  }
+}

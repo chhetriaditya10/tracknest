@@ -1,0 +1,116 @@
+.forgotPassModalWrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.forgotPassModalContent {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 20px 28px 24px 28px;
+  width: 300px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.closeButton {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.closeButton:hover {
+  opacity: 1;
+}
+
+.modalTop {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #222;
+  text-align: center;
+}
+
+.passInputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 25px;
+  width: 100%;
+  align-items: center;
+}
+
+.passInputs input {
+  background: #f3f3f3;
+  border: 1px solid #d1d1d1;
+  border-radius: 6px;
+  padding: 8px 10px; /* Reduced padding */
+  width: 80%;
+  font-size: 0.95rem; /* Slightly smaller font */
+  margin-bottom: 6px; /* Less space between inputs */
+  outline: none;
+  transition: border 0.2s;
+}
+
+.passInputs input:focus {
+  border: 1.5px solid #89e88c;
+}
+
+.changePassBTN {
+  background: linear-gradient(90deg, #89e88c 60%, #5fd6ff 100%);
+  border: none;
+  font-weight: 700;
+  color: #fff;
+  padding: 12px 0;
+  border-radius: 30px;
+  cursor: pointer;
+  width: 80%;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(137, 232, 140, 0.13);
+  margin-top: 6px;
+  margin-bottom: 6px;
+  transition: background 0.2s, opacity 0.2s;
+}
+.changePassBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.line {
+  border: none;
+  border-top: 2px solid #ff68f0;
+  margin: 0;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.backToSettings {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ff68f0;
+  margin-bottom: 0px;
+  cursor: pointer;
+  margin-top: 7px;
+}
+
+@media (max-width: 400px) {
+  .changePassModalContent {
+    padding: 12px 2vw 12px 2vw;
+    width: 90vw;
+  }
+}

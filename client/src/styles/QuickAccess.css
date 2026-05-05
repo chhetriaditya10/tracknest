@@ -1,0 +1,169 @@
+.controlsContainer {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+.controlsWrapper {
+  display: flex;
+  flex-direction: column;
+  background-color: #1e1d31;
+  width: 120px;
+  height: 270px;
+  margin-top: 0px;
+  border-radius: 14px;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.newExpense,
+.addBalance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.newExpense {
+  background-color: rgba(255, 109, 112, 0.15);
+  border: 2px solid rgba(255, 109, 112, 0.3);
+}
+
+.addBalance {
+  background-color: rgba(76, 175, 80, 0.15);
+  border: 2px solid rgba(76, 175, 80, 0.3);
+}
+
+.newExpense:hover {
+  background-color: rgba(255, 109, 112, 0.25);
+  border-color: rgba(255, 109, 112, 0.5);
+  transform: translateY(-2px);
+}
+
+.addBalance:hover {
+  background-color: rgba(76, 175, 80, 0.25);
+  border-color: rgba(76, 175, 80, 0.5);
+  transform: translateY(-2px);
+}
+
+.newExpenseIcon,
+.newBalanceIcon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+}
+
+.label {
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+  text-align: center;
+}
+
+.groupLabel {
+  color: white;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 10px;
+  font-weight: 500;
+}
+
+/* Small tablet - start transitioning */
+@media (min-width: 600px) {
+  .controlsWrapper {
+    width: 180px;
+    min-height: 290px;
+  }
+
+  .newExpense,
+  .addBalance {
+    width: 140px;
+    height: 110px;
+  }
+
+  .groupLabel {
+    width: 180px;
+  }
+}
+
+/* Medium tablet */
+@media (min-width: 768px) {
+  .controlsWrapper {
+    width: 320px; /* Match StatCard tablet width */
+    min-height: 320px;
+  }
+
+  .newExpense,
+  .addBalance {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-width: 200px;
+    border-radius: 14px;
+  }
+
+  .label {
+    font-size: 14px;
+  }
+
+  .groupLabel {
+    width: 320px;
+  }
+}
+
+/* Large tablet */
+@media (min-width: 900px) {
+  .controlsWrapper {
+    width: 320px;
+    min-height: 320px;
+  }
+
+  .groupLabel {
+    width: 320px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1000px) {
+  .controlsWrapper {
+    width: 300px;
+    min-height: 320px;
+  }
+
+  .groupLabel {
+    width: 300px;
+  }
+}
+
+/* Large Desktop styles */
+@media (min-width: 1200px) {
+  .controlsWrapper {
+    width: 280px; /* Smaller width for Quick Access on large screens */
+    min-height: 320px;
+  }
+
+  .newExpense,
+  .addBalance {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-width: 200px;
+    border-radius: 14px;
+  }
+
+  .label {
+    font-size: 14px; /* slightly bigger for desktop */
+  }
+
+  .groupLabel {
+    width: 280px; /* Match container width */
+  }
+}

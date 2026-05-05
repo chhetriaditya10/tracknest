@@ -1,0 +1,89 @@
+.recent-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.recent-activity-box {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(30, 29, 49);
+  min-height: 270px;
+  width: 220px;
+  border-radius: 16px;
+  border: 3px solid #332f55;
+  padding: 12px;
+  gap: 12px;
+  overflow-y: auto;
+  transition: all 0.3s ease;
+  align-items: center;
+}
+
+.recent-title {
+  color: white;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 10px;
+  font-weight: 500;
+  width: 220px;
+}
+
+.recent-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.recent-activity-box {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(30, 29, 49);
+  min-height: 270px;
+  width: 220px;
+  border-radius: 16px;
+  border: 3px solid #332f55;
+  padding: 12px;
+  gap: 12px;
+  overflow-y: auto;
+  transition: all 0.3s ease;
+  align-items: center;
+}
+
+.recent-title {
+  color: white;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 10px;
+  font-weight: 500;
+  width: 220px;
+}
+
+/* Tablet styles */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .recent-activity-box {
+    width: 350px;
+    min-height: 320px;
+    gap: 14px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .recent-title {
+    width: 350px;
+  }
+}
+
+/* Desktop styles */
+@media (min-width: 1200px) {
+  .recent-activity-box {
+    width: 420px; /* Larger width for Recent Activities on large screens */
+    min-height: 320px;
+    gap: 14px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .recent-title {
+    width: 420px; /* Match container width */
+  }
+}

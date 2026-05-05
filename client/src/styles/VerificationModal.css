@@ -1,0 +1,71 @@
+.gmailIcon {
+  width: 40px;
+}
+
+.verificationModal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: white;
+  padding: 20px 10px;
+  width: 350px;
+  border-radius: 10px;
+  position: relative;
+}
+
+.message {
+  font-size: 12px;
+  margin-bottom: 0px;
+  font-weight: 500;
+  color: rgb(83, 83, 83);
+  text-align: center;
+}
+
+.userGmail {
+  font-weight: 600;
+  font-size: 12px;
+  margin-top: 0px;
+  text-align: center;
+}
+
+.codeInput {
+  width: 100px;
+  height: 40px;
+  text-align: center;
+  border-radius: 5px;
+  border: 2px solid black;
+  margin-bottom: 0px;
+}
+
+.submitCode {
+  background: linear-gradient(90deg, #89e88c 60%, #5fd6ff 100%);
+  border: none;
+  font-weight: 700;
+  color: #fff;
+  padding: 12px 0;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(137, 232, 140, 0.13);
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.closeBtn {
+  width: 27px;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  cursor: pointer;
+}
+
+.modalLoadingText {
+  font-size: 14px;
+  color: #999;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.codeSent {
+  display: flex;
+  flex-direction: column;
+}

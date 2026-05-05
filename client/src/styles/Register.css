@@ -1,0 +1,40 @@
+/* client/src/styles/Register.css */
+/* Inherits mostly from Login.css via class reuse, 
+   adding specifics for the Register page */
+
+.auth-visual.register-visual {
+  background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+}
+
+.auth-visual.register-visual::before {
+  background: radial-gradient(
+    circle,
+    rgba(16, 185, 129, 0.15) 0%,
+    transparent 70%
+  );
+  top: auto;
+  bottom: -20%;
+  left: -20%;
+}
+
+.auth-visual.register-visual::after {
+  background: radial-gradient(
+    circle,
+    rgba(139, 92, 246, 0.15) 0%,
+    transparent 70%
+  );
+  bottom: auto;
+  top: -10%;
+  right: -10%;
+}
+
+/* Mobile adjustments specific to register form height */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 24px;
+  }
+
+  .auth-header h2 {
+    font-size: 1.75rem;
+  }
+}

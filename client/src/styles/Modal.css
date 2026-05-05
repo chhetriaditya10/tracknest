@@ -1,0 +1,212 @@
+/* client/src/styles/Modal.css */
+
+/* Modal Overlay */
+.modalBackground {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); /* Slightly darker for better focus */
+  backdrop-filter: blur(4px); /* Blur background for depth */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it's on top */
+}
+
+/* Modal Content Container */
+.modalWrapper {
+  background: var(--bg-surface); /* Use theme surface color */
+  border: 1px solid var(--border-glass); /* Consistent border */
+  border-radius: var(--radius-lg); /* Consistent radius */
+  padding: 24px; /* Increased padding */
+  width: 100%;
+  max-width: 400px; /* Max width for better desktop look */
+  color: var(--text-main);
+  font-family: "Inter", sans-serif; /* Ensure correct font */
+  box-shadow: var(--shadow-lg); /* Use theme shadow */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Spacing between elements */
+  animation: modalPopIn 0.3s ease-out;
+}
+
+/* Header */
+.topSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 16px;
+  margin-bottom: 4px;
+}
+
+.topSection h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+/* Form Inputs */
+.inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inputGroup label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.inputGroup input,
+.inputGroup select {
+  background: rgba(15, 23, 42, 0.6); /* Darker input background */
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  color: var(--text-main);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%; /* Ensure full width */
+  font-family: inherit;
+}
+
+.inputGroup input:focus,
+.inputGroup select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+/* Custom Select Arrow (optional, browsers style selects okay by default but this is cleaner) */
+.inputGroup select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg width='14' height='14' viewBox='0 0 24 24' fill='%2394a3b8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+/* Date Input Specifics */
+.inputGroup input[type="date"] {
+  /* Maintain consistent height/padding */
+  min-height: 46px;
+}
+
+/* Placeholder styling specifically for date inputs if needed */
+.inputGroup input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* Make icon white for dark theme */
+  opacity: 0.6;
+  cursor: pointer;
+}
+.inputGroup input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Save Button */
+.saveBtn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.saveBtn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.saveBtn:active {
+  transform: translateY(0);
+}
+
+/* Animation */
+@keyframes modalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Mobile Adjustments */
+@media (max-width: 480px) {
+  .modalWrapper {
+    width: 90%;
+    padding: 20px;
+  }
+}
+
+/* Budget Modal Styles */
+.budget-presets {
+  margin: 16px 0;
+}
+
+.preset-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preset-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: var(--primary);
+}
+
+.preset-btn.active {
+  background: rgba(139, 92, 246, 0.3);
+  border-color: var(--primary);
+  color: var(--primary);
+}

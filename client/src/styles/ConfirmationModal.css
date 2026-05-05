@@ -1,0 +1,122 @@
+/* client/src/styles/ConfirmationModal.css */
+
+.confirmationModalWrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+  padding: 16px;
+}
+
+.confirmationModalContent {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  animation: popIn 0.2s ease-out;
+}
+
+/* Icon Container */
+.confirmIconBox {
+  width: 64px;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-glass);
+}
+
+.passIcon {
+  width: 32px;
+  height: 32px;
+  opacity: 0.9;
+}
+
+.modalText {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.buttonsWrapper {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.modalButton {
+  flex: 1;
+  padding: 12px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modalButton.cancel {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  border: 1px solid var(--border-glass);
+}
+
+.modalButton.cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.modalButton.confirm {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+}
+
+.modalButton.confirm:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+/* Danger variant for Logout specifically if needed, 
+   but default primary works well for general confirmations */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

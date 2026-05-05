@@ -1,0 +1,40 @@
+.profilePic {
+  width: 120px;
+  height: 120px;
+  border-radius: 60px;
+  object-fit: cover;
+}
+
+.profileWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  margin-top: 60px;
+}
+
+.username {
+  color: white;
+  font-weight: bold;
+  font-size: 20px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+.email {
+  color: #b4b4b4;
+  margin-top: 0px;
+  font-size: 13px;
+}
+
+.editBtn {
+  background: linear-gradient(to right, #6b5bcc, #9e7fff);
+  color: white;
+  border: none;
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
