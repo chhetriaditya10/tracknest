@@ -7,7 +7,7 @@
   /* 👇 FIX: Use dvh for mobile browsers, fallback to vh */
   height: 100vh;
   height: 100dvh;
-  width: var(--sidebar-width);
+  width: var(--sidebar-width, 280px);
   background: var(--bg-surface);
   border-right: 1px solid var(--border-glass);
   display: flex;

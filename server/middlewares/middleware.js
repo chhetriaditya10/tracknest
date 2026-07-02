@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
+const jwtSecret = process.env.JWT_SECRET || "your_super_secret_jwt_key_change_in_production";
+
 export const verifyToken = async (req, res, next) => {
   try {
     // Add this line:
@@ -14,7 +16,7 @@ export const verifyToken = async (req, res, next) => {
         .json({ success: false, message: "No token provided" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret);
 
     // Add debug logging
     console.log("Decoded token:", decoded);
@@ -30,7 +32,11 @@ export const verifyToken = async (req, res, next) => {
       id: user._id,
       username: user.username,
       email: user.email,
+      role: user.role,
       isAdmin: user.isAdmin,
+      subscriptionStatus: user.subscriptionStatus,
+      plan: user.plan,
+      premiumExpiresAt: user.premiumExpiresAt,
     };
 
     next();
@@ -56,7 +62,7 @@ export const protect = async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, jwtSecret);
       req.user = await User.findById(decoded.id).select("-password");
       next();
     } catch (err) {
@@ -70,11 +76,32 @@ export const protect = async (req, res, next) => {
 };
 
 export const verifyAdmin = (req, res, next) => {
-  if (!req.user || !req.user.isAdmin) {
+  if (!req.user || (req.user.role !== "admin" && !req.user.isAdmin)) {
     return res.status(403).json({
       success: false,
       message: "Admin access required",
     });
   }
   next();
+};
+
+export const verifyPremium = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: "User authentication required" });
+  }
+
+  const isPremiumUser =
+    req.user.role === "admin" ||
+    req.user.plan === "premium" ||
+    req.user.plan === "ultra" ||
+    ["active", "trialing"].includes(req.user.subscriptionStatus);
+
+  if (isPremiumUser) {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message: "Premium subscription required to access this resource.",
+  });
 };

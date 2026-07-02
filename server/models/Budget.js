@@ -30,8 +30,8 @@ const BudgetSchema = new mongoose.Schema({
   },
   period: {
     type: String,
-    enum: ["daily", "weekly", "month", "quarterly", "yearly"],
-    default: "month",
+    enum: ["daily", "weekly", "month", "monthly", "quarterly", "yearly"],
+    default: "monthly",
   },
   startDate: {
     type: Date,

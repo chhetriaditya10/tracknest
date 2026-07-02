@@ -2,7 +2,12 @@ import express from "express";
 import Analytics from "../models/Analytics.js";
 import Expenses from "../models/Expenses.js";
 import Incomes from "../models/Incomes.js";
-import { verifyToken } from "../middlewares/middleware.js";
+import { verifyToken, verifyPremium } from "../middlewares/middleware.js";
+import {
+  analyzeAnomalies,
+  forecastExpenses,
+  getInsights as getAIInsights,
+} from "../controllers/analyticsController.js";
 
 const router = express.Router();
 
@@ -216,17 +221,23 @@ router.get("/getInsights", verifyToken, async (req, res) => {
     }
 
     const insights = {
-      savingsRate: analytics.savingsRate.toFixed(2),
+      savingsRate: analytics.savingsRate?.toFixed(2) ?? "0.00",
       topExpenseCategory: analytics.topExpenseCategory,
       topIncomeCategory: analytics.topIncomeCategory,
-      highestSpendingDay: analytics.dailySpending.reduce((max, day) =>
-        day.amount > max.amount ? day : max
-      ),
+      highestSpendingDay:
+        Array.isArray(analytics.dailySpending) && analytics.dailySpending.length > 0
+          ? analytics.dailySpending.reduce(
+              (max, day) => (day.amount > max.amount ? day : max),
+              analytics.dailySpending[0]
+            )
+          : null,
       averageDailySpending:
-        analytics.dailySpending.length > 0
+        Array.isArray(analytics.dailySpending) && analytics.dailySpending.length > 0
           ? (analytics.totalExpense / analytics.dailySpending.length).toFixed(2)
           : 0,
-      categoryBreakdown: analytics.categoryExpenses.slice(0, 5), // Top 5 categories
+      categoryBreakdown: Array.isArray(analytics.categoryExpenses)
+        ? analytics.categoryExpenses.slice(0, 5)
+        : [],
     };
 
     res.status(200).json({ insights });
@@ -234,5 +245,16 @@ router.get("/getInsights", verifyToken, async (req, res) => {
     res.status(500).json({ message: "Error fetching insights", error: err.message });
   }
 });
+
+// ========== NEW ML-BASED ROUTES ==========
+
+// Analyze expenses for anomalies using Z-Score method
+router.get("/anomalies", verifyToken, verifyPremium, analyzeAnomalies);
+
+// Forecast future expenses using Time Series Forecasting
+router.get("/forecast", verifyToken, verifyPremium, forecastExpenses);
+
+// Get combined AI insights (anomalies + forecasting)
+router.get("/ai-insights", verifyToken, verifyPremium, getAIInsights);
 
 export default router;

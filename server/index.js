@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import connectToDb from "./db/db.js";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -10,14 +11,51 @@ import accountRouter from "./routes/accountRoutes.js";
 import budgetRouter from "./routes/budgetRoutes.js";
 import analyticsRouter from "./routes/analyticsRoutes.js";
 import recurringRouter from "./routes/recurringRoutes.js";
+import investmentRouter from "./routes/investmentRoutes.js";
+import goalRouter from "./routes/goalRoutes.js";
+import checkoutRouter, { handleStripeWebhook } from "./routes/checkoutRoutes.js";
+import adminRouter from "./routes/adminRoutes.js";
+import { startRecurringJob } from "./scheduler/recurringJob.js";
 
 dotenv.config();
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
+app.options(/(.*)/, cors());
+
+// Stripe webhook endpoint must receive raw body to verify signature.
+app.post(
+  "/api/checkout/webhook",
+  express.raw({ type: "application/json" }),
+  handleStripeWebhook
+);
+
 app.use(express.json());
+
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    console.log(`API request ${req.method} ${req.path} - mongoose readyState=${mongoose.connection.readyState}`);
+  }
+  if (req.path.startsWith("/api") && mongoose.connection.readyState !== 1) {
+    console.warn(
+      "API request blocked because mongoose is not connected. readyState:",
+      mongoose.connection.readyState
+    );
+    return res.status(503).json({
+      success: false,
+      message:
+        "Database unavailable. Please configure MongoDB or start the local MongoDB service.",
+    });
+  }
+  next();
+});
 
 // Routes
 app.use("/api/auth", authRouter);
@@ -28,6 +66,11 @@ app.use("/api/account", accountRouter);
 app.use("/api/budget", budgetRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/recurring", recurringRouter);
+console.log("Mounted /api/recurring routes:", recurringRouter.stack.filter((layer) => layer.route).map((layer) => ({ path: layer.route.path, methods: layer.route.methods })));
+app.use("/api/investment", investmentRouter);
+app.use("/api/goal", goalRouter);
+app.use("/api/checkout", checkoutRouter);
+app.use("/api/admin", adminRouter);
 
 // Root route (for Render health check)
 app.get("/", (req, res) => {
@@ -37,15 +80,30 @@ app.get("/", (req, res) => {
 // Start server only AFTER DB is connected
 const PORT = process.env.PORT || 5000;
 
+// Export app for testing
+export default app;
+
+const startServer = () => {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log("mongoose readyState:", mongoose.connection.readyState);
+  });
+};
+
 connectToDb()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
+    if (mongoose.connection.readyState === 1) {
+      console.log("✅ Database is ready. Starting server.");
+      startRecurringJob();
+    } else {
+      console.warn(
+        "⚠️ Database connect call resolved but mongoose readyState is not 1."
+      );
+    }
   })
   .catch((error) => {
-    console.error(
-      "❌ Failed to connect to DB. Server not started.",
-      error.message
-    );
+    console.error("❌ Database connection attempt failed:", error.message);
+  })
+  .finally(() => {
+    startServer();
   });

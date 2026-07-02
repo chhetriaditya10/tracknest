@@ -4,13 +4,13 @@ import { useAuth } from "../context/ContextProvider.jsx";
 import { ClipLoader } from "react-spinners";
 
 const ProtectedRoute = () => {
-  const { user, loading } = useAuth();
+  const { user, token, loading } = useAuth();
 
   if (loading) {
     return <ClipLoader color="#8b5cf6" size={18} />;
   }
 
-  if (!user) {
+  if (!user || !token) {
     return <Navigate to="/login" replace />;
   }
 

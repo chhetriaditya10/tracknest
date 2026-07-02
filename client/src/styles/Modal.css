@@ -21,8 +21,9 @@
   border: 1px solid var(--border-glass); /* Consistent border */
   border-radius: var(--radius-lg); /* Consistent radius */
   padding: 24px; /* Increased padding */
-  width: 100%;
-  max-width: 400px; /* Max width for better desktop look */
+  width: min(520px, 100%);
+  max-width: 520px; /* Responsive max width */
+  max-height: 90vh;
   color: var(--text-main);
   font-family: "Inter", sans-serif; /* Ensure correct font */
   box-shadow: var(--shadow-lg); /* Use theme shadow */
@@ -31,6 +32,7 @@
   flex-direction: column;
   gap: 20px; /* Spacing between elements */
   animation: modalPopIn 0.3s ease-out;
+  overflow-y: auto;
 }
 
 /* Header */
@@ -134,6 +136,91 @@
   opacity: 1;
 }
 
+.modalDescription {
+  color: var(--text-muted);
+  margin-top: 8px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.modalError {
+  margin: 0;
+  color: #fda4af;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.premium-benefits-list {
+  display: grid;
+  gap: 14px;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.benefit-item span:first-child {
+  color: #8b5cf6;
+  font-size: 1.05rem;
+}
+
+.benefit-item span:last-child {
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.pricing-section {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 20px;
+  margin-top: 20px;
+}
+
+.section-label {
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pricing-card {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pricing-card p,
+.pricing-card span {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.pricing-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.4rem;
+  color: var(--text-main);
+}
+
+.premiumConfirmBtn {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
 /* Save Button */
 .saveBtn {
   background: var(--primary);
@@ -173,8 +260,10 @@
 /* Mobile Adjustments */
 @media (max-width: 480px) {
   .modalWrapper {
-    width: 90%;
+    width: 95%;
+    max-width: 95%;
     padding: 20px;
+    margin: 0 10px;
   }
 }
 

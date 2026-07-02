@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../styles/Modal.css";
 import { toast } from "react-toastify";
 import { ClipLoader } from "react-spinners";
@@ -7,12 +7,49 @@ const Modal = ({ title, onClose, onSubmit, categories, currentBalance }) => {
   const [category, setCategory] = useState(categories[0]?.toLowerCase() || "");
   const [customCategory, setCustomCategory] = useState(""); // State for "Others" input
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState("monthly");
+  const [nextDueDate, setNextDueDate] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const calculateNextDueDate = (baseDate, frequencyValue) => {
+    const nextDate = new Date(baseDate);
+
+    switch (frequencyValue) {
+      case "weekly":
+        nextDate.setDate(nextDate.getDate() + 7);
+        break;
+      case "monthly":
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        break;
+      case "yearly":
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+        break;
+      default:
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        break;
+    }
+
+    return nextDate.toISOString().slice(0, 10);
+  };
+
+  React.useEffect(() => {
+    if (isRecurring && date) {
+      setNextDueDate(calculateNextDueDate(date, frequency));
+    } else {
+      setNextDueDate("");
+    }
+  }, [isRecurring, date, frequency]);
 
   const handleSave = async () => {
     if (!amount || !date) {
       toast.error("Please fill out all fields");
+      return;
+    }
+
+    if (isRecurring && !frequency) {
+      toast.error("Please select a recurrence frequency.");
       return;
     }
 
@@ -41,6 +78,9 @@ const Modal = ({ title, onClose, onSubmit, categories, currentBalance }) => {
         category: finalCategory,
         amount: parseFloat(amount),
         date,
+        isRecurring,
+        frequency: isRecurring ? frequency : null,
+        nextDueDate: isRecurring ? nextDueDate : null,
       });
       {
         title === "Add Income"
@@ -114,6 +154,38 @@ const Modal = ({ title, onClose, onSubmit, categories, currentBalance }) => {
             onChange={(e) => setDate(e.target.value)}
           />
         </div>
+
+        <div className="inputGroup recurringToggle">
+          <label htmlFor="recurringToggle">Make this recurring?</label>
+          <input
+            type="checkbox"
+            id="recurringToggle"
+            checked={isRecurring}
+            onChange={(e) => setIsRecurring(e.target.checked)}
+          />
+        </div>
+
+        {isRecurring && (
+          <>
+            <div className="inputGroup">
+              <label htmlFor="frequency">Recurrence</label>
+              <select
+                id="frequency"
+                value={frequency}
+                onChange={(e) => setFrequency(e.target.value)}
+              >
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+
+            <div className="inputGroup">
+              <label>Next due date</label>
+              <input type="date" value={nextDueDate} readOnly />
+            </div>
+          </>
+        )}
 
         <button
           className="saveBtn"

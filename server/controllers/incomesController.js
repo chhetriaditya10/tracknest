@@ -1,14 +1,72 @@
 import IncomeModel from "../models/Incomes.js";
 import ActivityModel from "../models/Activities.js";
+import User from "../models/User.js";
+
+export const topUpBalance = async (req, res) => {
+  try {
+    const { amount: rawAmount, note, date: rawDate } = req.body || {};
+    const amount = Number(rawAmount);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount must be greater than 0",
+      });
+    }
+
+    const parsedDate = rawDate ? new Date(rawDate) : new Date();
+    if (rawDate && Number.isNaN(parsedDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format",
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { $inc: { balance: amount } },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    await ActivityModel.create({
+      userId: req.user.id,
+      type: "balance_topup",
+      category: "Balance Top-up",
+      amount,
+      date: parsedDate,
+      createdAt: new Date(),
+    });
+
+    return res.status(200).json({
+      success: true,
+      balance: updatedUser.balance,
+      message: "Balance updated successfully",
+    });
+  } catch (error) {
+    console.error("Error in topUpBalance:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 // Add Expense
 export const addBalance = async (req, res) => {
   try {
-    console.log("Request body:", req.body);
-    const { balance } = req.body;
+    console.log("Income request body:", req.body);
+    const balance = req.body.balance || req.body;
+    const { category, amount: rawAmount, date: rawDate, description } = balance || {};
 
     // Validate request exists
-    if (!balance) {
+    if (!balance || Object.keys(balance).length === 0) {
       return res.status(400).json({
         success: false,
         message: "Balance data is required",
@@ -17,7 +75,10 @@ export const addBalance = async (req, res) => {
 
     // Validate required fields
     const requiredFields = ["category", "amount", "date"];
-    const missingFields = requiredFields.filter((field) => !balance[field]);
+    const missingFields = requiredFields.filter((field) => {
+      const value = field === "amount" ? rawAmount : field === "date" ? rawDate : balance[field];
+      return value === undefined || value === null || value === "";
+    });
 
     if (missingFields.length > 0) {
       return res.status(400).json({
@@ -27,7 +88,7 @@ export const addBalance = async (req, res) => {
     }
 
     // Validate amount
-    const amount = Number(balance.amount);
+    const amount = Number(String(rawAmount).replace(/,/g, ""));
     if (isNaN(amount) || amount <= 0) {
       return res.status(400).json({
         success: false,
@@ -36,7 +97,7 @@ export const addBalance = async (req, res) => {
     }
 
     // Validate date
-    const date = new Date(balance.date);
+    const date = new Date(rawDate);
     if (isNaN(date.getTime())) {
       return res.status(400).json({
         success: false,
@@ -46,13 +107,16 @@ export const addBalance = async (req, res) => {
 
     // Create and save balance
     const newBalance = new IncomeModel({
-      category: balance.category,
-      amount: amount,
-      date: date,
+      category: category,
+      amount,
+      date,
       userId: req.user.id,
       createdAt: date,
-      month: date.getMonth(),
-      description: balance.description || null,
+      month: `${date.getFullYear()}-${date.getMonth() + 1}`,
+      description: description || "",
+      isRecurring: balance.isRecurring || false,
+      frequency: balance.isRecurring ? balance.frequency : null,
+      nextDueDate: balance.isRecurring ? new Date(balance.nextDueDate) : null,
     });
 
     const savedBalance = await newBalance.save();

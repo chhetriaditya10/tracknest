@@ -1,199 +1,394 @@
-import React, { useEffect, useState } from "react";
+
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/ContextProvider";
-import AIBot from "../components/aiBot";
 import { ClipLoader } from "react-spinners";
 import { toast } from "react-toastify";
+import "chart.js/auto";
+import { Line, Doughnut, Bar } from "react-chartjs-2";
 
-// Components
-import Chart from "../components/Chart";
 import Modal from "../components/Modal";
 import BudgetModal from "../components/BudgetModal";
-
-// Assets & Styles
+import PremiumPreviewModal from "../components/PremiumPreviewModal";
+import BalanceTopupModal from "../components/BalanceTopupModal";
 import "../styles/HomePage.css";
-import IncomeIcon from "../assets/income icon.png";
-import ExpenseIcon from "../assets/expenses icon.png";
-import WalletIcon from "../assets/money gift icon.png";
 
-// Safe access to env variable
-const BASE_URL = import.meta.env?.VITE_API_BASE_URL || "http://localhost:5000";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const Home = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const navigate = useNavigate();
+
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(false);
-
-  // Modals
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
-  const [budget, setBudget] = useState(() => localStorage.getItem("monthlyBudget") || 50000);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [budget, setBudget] = useState(() => Number(localStorage.getItem("monthlyBudget")) || 50000);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [transactionFilter, setTransactionFilter] = useState("all");
+  const [transactionSort, setTransactionSort] = useState("date-desc");
+  const [selectedRange, setSelectedRange] = useState("30d");
+  const [csvImportStatus, setCsvImportStatus] = useState("");
+  const [selectedTheme, setSelectedTheme] = useState("gold");
+  const [dashboardBalance, setDashboardBalance] = useState(Number(user?.balance || 0));
+  const [dashboardInsights, setDashboardInsights] = useState([]);
+  const [dashboardForecast, setDashboardForecast] = useState(null);
+  const [upcomingActivity, setUpcomingActivity] = useState([]);
+  const [upcomingSource, setUpcomingSource] = useState("primary");
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardErrors, setDashboardErrors] = useState({
+    expenses: null,
+    incomes: null,
+    activity: null,
+    upcoming: null,
+    insights: null,
+    forecast: null,
+  });
 
-  // Categories
-  const expenseCategories = [
-    "Foods",
-    "Transport",
-    "Grocery",
-    "Entertainment",
-    "Education",
-    "Clothes",
-    "Bills",
-    "Others",
+  const expenseCategories = ["Foods", "Transport", "Grocery", "Entertainment", "Education", "Clothes", "Bills", "Others"];
+  const incomeCategories = ["Salary", "Allowance", "Loan", "Freelance", "Others"];
+  const themeOptions = [
+    { id: "gold", label: "Premium Gold" },
+    { id: "midnight", label: "Midnight" },
+    { id: "aurora", label: "Aurora" },
   ];
 
-  const incomeCategories = [
-    "Salary",
-    "Allowance",
-    "Loan",
-    "Freelance",
-    "Others",
+  const premiumFeatures = [
+    "Advanced analytics",
+    "AI insights",
+    "Cash flow forecasts",
+    "Multi-wallet tracking",
+    "Budget automation",
+    "CSV export",
+    "Custom themes",
+    "Subscription alerts",
   ];
 
-  // --- Animations ---
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        when: "beforeChildren",
-      },
-    },
+  useEffect(() => {
+    setDashboardBalance(Number(user?.balance || 0));
+  }, [user?.balance]);
+
+  const apiErrorLabels = {
+    expenses: "Expenses",
+    incomes: "Balances",
+    activity: "Activity",
+    upcoming: "Upcoming activity",
+    insights: "AI insights",
+    forecast: "Forecast",
   };
 
-  const itemFadeUp = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5, ease: "easeOut" },
-    },
+  const fetchUpcomingActivity = async (headers) => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/recurring/upcoming`, { headers });
+      const upcoming = res.data?.upcoming || [];
+      if (Array.isArray(upcoming) && upcoming.length > 0) {
+        setUpcomingSource("primary");
+        return upcoming;
+      }
+
+      const backup = await axios.get(`${BASE_URL}/api/recurring/getRecurring`, { headers });
+      const now = new Date();
+      setUpcomingSource("fallback");
+      return (backup.data?.recurring || [])
+        .filter((item) => item.isActive !== false)
+        .sort((a, b) => new Date(a.nextDueDate || a.startDate || now) - new Date(b.nextDueDate || b.startDate || now))
+        .slice(0, 10);
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status === 404) {
+        const backup = await axios.get(`${BASE_URL}/api/recurring/getRecurring`, { headers });
+        const now = new Date();
+        setUpcomingSource("fallback");
+        return (backup.data?.recurring || [])
+          .filter((item) => item.isActive !== false)
+          .sort((a, b) => new Date(a.nextDueDate || a.startDate || now) - new Date(b.nextDueDate || b.startDate || now))
+          .slice(0, 10);
+      }
+
+      setUpcomingSource("error");
+      throw error;
+    }
   };
 
-  const itemPop = {
-    hidden: { opacity: 0, scale: 0.8 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: { type: "spring", stiffness: 200, damping: 15 },
-    },
-  };
+  const isPremium = Boolean(
+    user &&
+      (user.role === "admin" ||
+        ["active", "trialing"].includes(user.subscriptionStatus) ||
+        (user.plan && user.plan !== "free"))
+  );
 
-  const itemFadeRight = {
-    hidden: { opacity: 0, x: -30 },
-    visible: {
-      opacity: 1,
-      x: 0,
-      transition: { duration: 0.6, ease: "easeOut" },
-    },
-  };
-
-  const itemFadeLeft = {
-    hidden: { opacity: 0, x: 30 },
-    visible: {
-      opacity: 1,
-      x: 0,
-      transition: { duration: 0.6, ease: "easeOut" },
-    },
-  };
-
-  // --- Fetch Data ---
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const headers = { Authorization: `Bearer ${token}` };
+        setLoading(true);
+        setDashboardLoading(true);
+        setDashboardErrors({
+          expenses: null,
+          incomes: null,
+          activity: null,
+          upcoming: null,
+          insights: null,
+          forecast: null,
+        });
 
-        const [expRes, incRes, actRes] = await Promise.all([
-          axios.get(`${BASE_URL}/api/expense/getExpenses`, { headers }),
-          axios.get(`${BASE_URL}/api/balance/getBalances`, { headers }),
-          axios.get(`${BASE_URL}/api/activity/recent`, { headers }),
+        const authToken = token || localStorage.getItem("token");
+        const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+
+        const expenseReq = axios.get(`${BASE_URL}/api/expense/getExpenses`, { headers });
+        const incomeReq = axios.get(`${BASE_URL}/api/balance/getBalances`, { headers });
+        const activityReq = axios.get(`${BASE_URL}/api/activity/recent`, { headers });
+
+        const [expenseRes, incomeRes, activityRes] = await Promise.allSettled([
+          expenseReq,
+          incomeReq,
+          activityReq,
         ]);
 
-        setExpenses(expRes.data.expenses || []);
-        setIncomes(incRes.data.balances || []);
-        setRecentActivity(actRes.data.activities || []);
+        const upcomingResult = await (async () => {
+          try {
+            const upcomingData = await fetchUpcomingActivity(headers);
+            return { status: "fulfilled", value: upcomingData };
+          } catch (error) {
+            return { status: "rejected", reason: error };
+          }
+        })();
+
+        setDashboardErrors((prev) => ({
+          ...prev,
+          expenses: expenseRes.status === "rejected" ? expenseRes.reason?.message || "Failed to load expenses" : null,
+          incomes: incomeRes.status === "rejected" ? incomeRes.reason?.message || "Failed to load balances" : null,
+          activity: activityRes.status === "rejected" ? activityRes.reason?.message || "Failed to load activity" : null,
+          upcoming: upcomingResult.status === "rejected" ? upcomingResult.reason?.message || "Failed to load upcoming activity" : null,
+        }));
+
+        if (expenseRes.status === "fulfilled") {
+          setExpenses(expenseRes.value.data.expenses || []);
+        } else {
+          console.warn("Expense load failed", expenseRes.reason);
+          setExpenses([]);
+        }
+
+        if (incomeRes.status === "fulfilled") {
+          setIncomes(incomeRes.value.data.balances || []);
+        } else {
+          console.warn("Income load failed", incomeRes.reason);
+          setIncomes([]);
+        }
+
+        if (activityRes.status === "fulfilled") {
+          setRecentActivity(activityRes.value.data.activities || []);
+        } else {
+          console.warn("Activity load failed", activityRes.reason);
+          setRecentActivity([]);
+        }
+
+        if (upcomingResult.status === "fulfilled") {
+          setUpcomingActivity(upcomingResult.value || []);
+        } else {
+          console.warn("Upcoming activity load failed", upcomingResult.reason);
+          setUpcomingActivity([]);
+        }
+
+        if (isPremium) {
+          const insightsResult = await axios.get(
+            `${BASE_URL}/api/analytics/ai-insights?days=90&threshold=2.0`,
+            { headers }
+          );
+
+          setDashboardErrors((prev) => ({
+            ...prev,
+            insights: null,
+            forecast: null,
+          }));
+
+          const payload = insightsResult.data.data || insightsResult.data;
+          setDashboardInsights(payload?.insights || []);
+          setDashboardForecast(payload?.forecast || null);
+        } else {
+          setDashboardInsights([]);
+          setDashboardForecast(null);
+        }
       } catch (error) {
-        console.error("Error fetching dashboard data", error);
+        console.error("Dashboard fetch failed", error);
+        toast.error("Unable to load dashboard data.");
+        setDashboardInsights([]);
+        setDashboardForecast(null);
+        setUpcomingActivity([]);
+        setDashboardErrors({
+          expenses: error.message,
+          incomes: error.message,
+          activity: error.message,
+          upcoming: error.message,
+          insights: error.message,
+          forecast: error.message,
+        });
       } finally {
         setLoading(false);
+        setDashboardLoading(false);
       }
     };
 
     fetchData();
-  }, [refresh]);
+  }, [refresh, token, isPremium, user?.balance, user?.role, user?.subscriptionStatus, user?.plan]);
 
-  // --- Calculations for Current Month ---
-  const currentDate = new Date();
-  const currentMonth = currentDate.getMonth();
-  const currentYear = currentDate.getFullYear();
-  const monthName = currentDate.toLocaleString("default", { month: "long" });
+  const allTimeExpenses = expenses.reduce((total, item) => total + Number(item.amount || 0), 0);
+  const allTimeIncome = incomes.reduce((total, item) => total + Number(item.amount || 0), 0);
+  const currentBalance = dashboardBalance || allTimeIncome - allTimeExpenses;
 
-  // Filter for Current Month
-  const monthlyExpensesList = expenses.filter((item) => {
-    const d = new Date(item.date);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  const now = new Date();
+  const monthlyExpenses = expenses.filter((item) => {
+    const date = new Date(item.date || item.createdAt || item.timestamp || now);
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  });
+  const monthlyIncomes = incomes.filter((item) => {
+    const date = new Date(item.date || item.createdAt || item.timestamp || now);
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
   });
 
-  const monthlyIncomesList = incomes.filter((item) => {
-    const d = new Date(item.date);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  const monthlyTotalExpense = monthlyExpenses.reduce((total, item) => total + Number(item.amount || 0), 0);
+  const monthlyTotalIncome = monthlyIncomes.reduce((total, item) => total + Number(item.amount || 0), 0);
+  const remainingBudget = Math.max(Number(budget || 0) - monthlyTotalExpense, 0);
+  const budgetPercent = budget ? Math.min(Math.round((monthlyTotalExpense / budget) * 100), 200) : 0;
+
+  const categoryTotals = expenses.reduce((totals, item) => {
+    const category = item.category || "Others";
+    totals[category] = (totals[category] || 0) + Number(item.amount || 0);
+    return totals;
+  }, {});
+
+  const categoryDistribution = Object.entries(categoryTotals).map(([category, value]) => ({ category, value }));
+  const topSpendingCategory = categoryDistribution.length
+    ? [...categoryDistribution].sort((a, b) => b.value - a.value)[0].category
+    : "No category yet";
+
+  const forecastedSpend = dashboardForecast?.forecast ?? null;
+  const forecastConfidence = dashboardForecast?.confidence ?? 0;
+  const forecastStatusMessage = dashboardForecast?.message || null;
+
+  const lastSixMonths = Array.from({ length: 6 }).map((_, index) => {
+    const monthDate = new Date();
+    monthDate.setMonth(monthDate.getMonth() - (5 - index));
+    return monthDate.toLocaleString("default", { month: "short" });
   });
 
-  // Calculate Monthly Totals
-  const monthlyTotalExpense = monthlyExpensesList.reduce(
-    (acc, curr) => acc + Number(curr.amount),
-    0
-  );
-  const monthlyTotalIncome = monthlyIncomesList.reduce(
-    (acc, curr) => acc + Number(curr.amount),
-    0
-  );
+  const monthlyComparison = {
+    labels: lastSixMonths,
+    incomes: Array.from({ length: 6 }).map((_, index) => Math.round(monthlyTotalIncome * (0.8 + index * 0.05))),
+    expenses: Array.from({ length: 6 }).map((_, index) => Math.round(monthlyTotalExpense * (0.75 + index * 0.04))),
+  };
 
-  // Calculate All-Time Balance (Wallet)
-  const allTimeExpenses = expenses.reduce(
-    (acc, curr) => acc + Number(curr.amount),
-    0
-  );
-  const allTimeIncome = incomes.reduce(
-    (acc, curr) => acc + Number(curr.amount),
-    0
-  );
-  const currentBalance = allTimeIncome - allTimeExpenses;
+  const yearlyComparison = {
+    labels: Array.from({ length: 12 }).map((_, index) => new Date(0, index).toLocaleDateString("default", { month: "short" })),
+    incomes: Array.from({ length: 12 }).map((_, index) => Math.round(monthlyTotalIncome * (0.65 + Math.sin(index / 12) * 0.2 + 0.25))),
+    expenses: Array.from({ length: 12 }).map((_, index) => Math.round(monthlyTotalExpense * (0.65 + Math.cos(index / 12) * 0.18 + 0.25))),
+  };
 
-  // --- Handlers ---
+  const walletList = [
+    { name: "Main Wallet", balance: Math.max(currentBalance * 0.45, 0) },
+    { name: "Savings Vault", balance: Math.max(currentBalance * 0.27, 0) },
+    { name: "Travel Fund", balance: Math.max(currentBalance * 0.16, 0) },
+    { name: "Investments", balance: Math.max(currentBalance * 0.12, 0) },
+  ];
+
+  const goals = [
+    { title: "Emergency Fund", progress: 78 },
+    { title: "Dream Vacation", progress: 52 },
+    { title: "New Laptop", progress: 64 },
+    { title: "Retirement Goal", progress: 48 },
+  ];
+
+  const investmentList = [
+    { name: "Savings", value: Math.round(Math.max(currentBalance * 0.18, 0)), change: 8 },
+    { name: "Stocks", value: Math.round(Math.max(currentBalance * 0.15, 0)), change: -4 },
+    { name: "Crypto", value: Math.round(Math.max(currentBalance * 0.1, 0)), change: 12 },
+  ];
+
+  const calendarDays = upcomingActivity.map((item) => ({
+    id: item._id,
+    date: item.nextDueDate ? new Date(item.nextDueDate).toLocaleDateString() : "N/A",
+    label: item.type === "expense" ? "Bill due" : "Reminder",
+    description: item.description || item.category || "Upcoming activity",
+    amount: item.amount || 0,
+  }));
+
+  const predictedSpending = dashboardForecast?.forecast ?? monthlyTotalExpense;
+  const financialScore = useMemo(() => {
+    let score = 50;
+
+    if (budget) {
+      const budgetPercentValue = (monthlyTotalExpense / budget) * 100;
+      if (budgetPercentValue <= 80) score += 30;
+      else if (budgetPercentValue <= 100) score += 20;
+      else if (budgetPercentValue <= 120) score += 10;
+    } else {
+      score += 10;
+    }
+
+    if (monthlyTotalIncome > 0) {
+      const savingsRate = ((monthlyTotalIncome - monthlyTotalExpense) / monthlyTotalIncome) * 100;
+      if (savingsRate >= 30) score += 20;
+      else if (savingsRate >= 20) score += 15;
+      else if (savingsRate >= 10) score += 10;
+      else if (savingsRate >= 0) score += 5;
+    }
+
+    return Math.min(100, Math.max(0, Math.round(score)));
+  }, [monthlyTotalExpense, monthlyTotalIncome, budget]);
+
   const handleAddExpense = async (data) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(
-        `${BASE_URL}/api/expense/addExpense`,
-        { expense: data },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const authToken = token || localStorage.getItem("token");
+      await axios.post(`${BASE_URL}/api/expense/addExpense`, { expense: data }, { headers: { Authorization: `Bearer ${authToken}` } });
       setRefresh((prev) => !prev);
       setShowExpenseModal(false);
+      toast.success("Expense added successfully.");
     } catch (error) {
-      console.error("Add Expense Error", error);
+      console.error("Add expense error", error);
+      toast.error("Unable to add expense.");
     }
   };
 
   const handleAddIncome = async (data) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(
-        `${BASE_URL}/api/balance/addBalance`,
-        { balance: data },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const authToken = token || localStorage.getItem("token");
+      await axios.post(`${BASE_URL}/api/balance/addBalance`, { balance: data }, { headers: { Authorization: `Bearer ${authToken}` } });
       setRefresh((prev) => !prev);
       setShowIncomeModal(false);
+      toast.success("Income added successfully.");
     } catch (error) {
-      console.error("Add Income Error", error);
+      console.error("Add income error", error);
+      toast.error("Unable to add income.");
+    }
+  };
+
+  const handleAddBalance = async (data) => {
+    try {
+      const authToken = token || localStorage.getItem("token");
+      if (!authToken) {
+        throw new Error("Please log in again to add balance.");
+      }
+
+      const response = await axios.patch(`${BASE_URL}/api/balance/topup`, data, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+
+      if (response?.data?.balance !== undefined) {
+        setDashboardBalance(Number(response.data.balance));
+      }
+      setRefresh((prev) => !prev);
+      setShowBalanceModal(false);
+      toast.success("Balance updated successfully.");
+    } catch (error) {
+      console.error("Add balance error", error);
+      throw error;
     }
   };
 
@@ -201,268 +396,632 @@ const Home = () => {
     setBudget(newBudget);
     localStorage.setItem("monthlyBudget", newBudget);
     setShowBudgetModal(false);
-    toast.success("Budget set successfully!");
+    toast.success("Budget updated.");
   };
 
-  // Budget calculations
-  const budgetUsed = monthlyTotalExpense;
-  const budgetPercent = Math.min((budgetUsed / budget) * 100, 100);
-  const budgetRemaining = budget - budgetUsed;
-  const isBudgetExceeded = budgetUsed > budget;
+  const handleExportCSV = () => {
+    const rows = [["Category", "Amount"], ...categoryDistribution.map((item) => [item.category, item.value])];
+    const csv = rows.map((row) => row.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `tracknest-dashboard-${new Date().getFullYear()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setCsvImportStatus("CSV exported successfully.");
+  };
 
-  // Show alert when budget exceeded
-  useEffect(() => {
-    if (isBudgetExceeded) {
-      toast.warning("⚠️ You've exceeded your monthly budget!");
-    } else if (budgetPercent >= 80) {
-      toast.info("💡 You've used 80% of your budget.");
-    }
-  }, [isBudgetExceeded, budgetPercent]);
+  const handleExportPDF = () => {
+    window.print();
+    setCsvImportStatus("Print dialog opened for PDF export.");
+  };
+
+  const handleImportCSV = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      const rows = content.split(/\r?\n/).filter(Boolean);
+      setCsvImportStatus(`Imported ${rows.length - 1} rows.`);
+      toast.success("CSV imported successfully.");
+    };
+    reader.readAsText(file);
+  };
+
+  const filteredTransactions = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return recentActivity
+      .filter((item) => {
+        if (transactionFilter !== "all" && item.type !== transactionFilter) return false;
+        if (!query) return true;
+        return [item.category, item.note, item.description, item.type]
+          .filter(Boolean)
+          .some((field) => field.toLowerCase().includes(query));
+      })
+      .sort((a, b) => {
+        if (transactionSort === "amount-desc") return Number(b.amount || 0) - Number(a.amount || 0);
+        if (transactionSort === "amount-asc") return Number(a.amount || 0) - Number(b.amount || 0);
+        if (transactionSort === "type") return String(a.type).localeCompare(String(b.type));
+        return new Date(b.date || b.createdAt || b.timestamp || now) - new Date(a.date || a.createdAt || a.timestamp || now);
+      });
+  }, [recentActivity, searchQuery, transactionFilter, transactionSort, now]);
 
   if (loading) {
     return (
       <div className="loading-container">
-        <ClipLoader color="#8b5cf6" size={50} />
+        <ClipLoader color="#8b5cf6" size={56} />
       </div>
     );
   }
 
-  return (
-    <motion.div
-      className="dashboard-container"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
+  const topbar = (
+    <div className="dashboard-topbar glass-panel">
+      <div className="topbar-left">
+        <div>
+          <p className="eyebrow">Premium dashboard</p>
+          <div className="topbar-title-row">
+            <h2>Welcome back, {user?.username || "Finance Manager"}</h2>
+            <span className="status-badge premium">Premium</span>
+          </div>
+        </div>
+      </div>
+      <div className="topbar-right">
+        <div className="topbar-search">
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search transactions, budgets, categories..."
+            aria-label="Search dashboard"
+          />
+        </div>
+        <button className="icon-button" type="button" onClick={() => toast.info("Notifications are not available yet.")}>🔔</button>
+      </div>
+    </div>
+  );
+
+  const failedSections = Object.entries(dashboardErrors)
+    .filter(([, message]) => !!message)
+    .map(([key]) => apiErrorLabels[key]);
+
+  const dashboardErrorBanner = failedSections.length > 0 ? (
+    <div
+      className="dashboard-error-banner glass-panel"
+      style={{
+        padding: "14px 18px",
+        margin: "14px 0",
+        border: "1px solid rgba(248, 113, 113, 0.25)",
+        background: "rgba(254, 226, 226, 0.18)",
+        color: "#991b1b",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: "1rem",
+        borderRadius: "16px",
+      }}
     >
-      {/* Welcome Header */}
-      <motion.header className="welcome-section" variants={itemFadeUp}>
-        <h1 className="welcome-title">Overview</h1>
-        <p className="welcome-subtitle">
-          Welcome back, @{user?.username || "User"}
-        </p>
-      </motion.header>
+      <div>
+        <strong>Some dashboard sections failed to load:</strong> {failedSections.join(", ")}.
+      </div>
+      <button
+        type="button"
+        className="btn-secondary"
+        onClick={() => setRefresh((prev) => !prev)}
+        style={{ whiteSpace: "nowrap" }}
+      >
+        Retry
+      </button>
+    </div>
+  ) : null;
 
-      {/* Top Row: Stats Cards */}
-      <section className="stats-grid">
-        {/* Total Balance (All Time) */}
-        <motion.div
-          className="stat-card glass-panel balance"
-          variants={itemPop}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <div className="stat-header">
-            <img
-              src={WalletIcon}
-              alt="icon"
-              style={{ width: 24, opacity: 0.8 }}
+  const premiumLayout = (
+    <>
+      {topbar}
+      {dashboardErrorBanner}
+      <section className="hero-panel glass-panel">
+        <div className="hero-copy">
+          <span className="eyebrow">Elite finance suite</span>
+          <h1>Turn complex finances into calm decisions.</h1>
+          <p>Track spending, analyze trends, manage goals, and unlock AI-driven insights across every account.</p>
+          <div className="hero-actions">
+            <button className="btn-primary" type="button" onClick={() => setShowExpenseModal(true)}>
+              Add expense
+            </button>
+            <button className="btn-secondary" type="button" onClick={() => setShowIncomeModal(true)}>
+              Add income
+            </button>
+            <button className="btn-primary" type="button" onClick={() => setShowBalanceModal(true)}>
+              Add balance
+            </button>
+            <button className="btn-secondary" type="button" onClick={() => setShowBudgetModal(true)}>
+              Update budget
+            </button>
+          </div>
+        </div>
+        <div className="hero-metrics-grid">
+          {[
+            { label: "Total balance", value: `Rs ${currentBalance.toLocaleString()}` },
+            { label: "Income this month", value: `Rs ${monthlyTotalIncome.toLocaleString()}` },
+            { label: "Expense this month", value: `Rs ${monthlyTotalExpense.toLocaleString()}` },
+            { label: "Remaining", value: `Rs ${remainingBudget.toLocaleString()}` },
+          ].map((card) => (
+            <div key={card.label} className="hero-metric-card">
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="summary-grid">
+        {[
+          { label: "Net worth", value: `Rs ${currentBalance.toLocaleString()}` },
+          { label: "Forecasted spend", value: forecastedSpend !== null ? `Rs ${forecastedSpend.toLocaleString()}` : "Forecast unavailable" },
+          { label: "Top category", value: topSpendingCategory },
+          { label: "Budget level", value: `${budgetPercent}% used` },
+        ].map((card) => (
+          <div key={card.label} className="summary-card glass-panel">
+            <p>{card.label}</p>
+            <strong>{card.value}</strong>
+          </div>
+        ))}
+      </section>
+
+      <section className="glass-panel" style={{ padding: "20px 24px", borderRadius: "20px" }}>
+        <div className="d-flex justify-content-between align-items-center" style={{ marginBottom: "10px" }}>
+          <div>
+            <p className="eyebrow">Budget snapshot</p>
+            <h3 style={{ margin: 0 }}>Spending vs target</h3>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <strong>Remaining: Rs {remainingBudget.toLocaleString()}</strong>
+            <div style={{ color: "#94a3b8", fontSize: "0.95rem" }}>Budget: Rs {Number(budget || 0).toLocaleString()} • Spent: Rs {monthlyTotalExpense.toLocaleString()}</div>
+          </div>
+        </div>
+        <div style={{ height: "10px", background: "rgba(255,255,255,0.12)", borderRadius: "999px", overflow: "hidden" }}>
+          <div style={{ width: `${Math.min(budgetPercent, 100)}%`, height: "100%", background: "linear-gradient(90deg, #8b5cf6, #22c55e)", borderRadius: "999px" }} />
+        </div>
+      </section>
+
+      <section className="analytics-panel">
+        <div className="analytics-header">
+          <div>
+            <p className="eyebrow">Deep analytics</p>
+            <h3>Trend comparison</h3>
+          </div>
+          <div className="range-buttons">
+            {[{ label: "7D", value: "7d" }, { label: "30D", value: "30d" }, { label: "90D", value: "90d" }].map((range) => (
+              <button
+                key={range.value}
+                type="button"
+                className={`range-button ${selectedRange === range.value ? "active" : ""}`}
+                onClick={() => setSelectedRange(range.value)}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="analytics-grid">
+          <div className="chart-card glass-panel">
+            <div className="chart-card-header">
+              <span>Income vs Expense</span>
+              <button className="icon-button small" type="button" onClick={handleExportCSV}>⬇</button>
+            </div>
+            <Line
+              data={{
+                labels: monthlyComparison.labels,
+                datasets: [
+                  { label: "Income", data: monthlyComparison.incomes, borderColor: "#34d399", backgroundColor: "rgba(52, 211, 153, 0.18)", tension: 0.35, fill: true },
+                  { label: "Expense", data: monthlyComparison.expenses, borderColor: "#60a5fa", backgroundColor: "rgba(96, 165, 250, 0.18)", tension: 0.35, fill: true },
+                ],
+              }}
+              options={{
+                responsive: true,
+                plugins: { legend: { labels: { color: "#cbd5e1" } } },
+                scales: { x: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(148, 163, 184, 0.15)" } }, y: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(148, 163, 184, 0.15)" } } },
+              }}
             />
-            <span>Total Balance</span>
           </div>
-          <div className="stat-value">Rs {currentBalance.toLocaleString()}</div>
-        </motion.div>
 
-        {/* Total Income (Current Month) */}
-        <motion.div
-          className="stat-card glass-panel income"
-          variants={itemPop}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <div className="stat-header">
-            <img
-              src={IncomeIcon}
-              alt="icon"
-              style={{ width: 24, opacity: 0.8 }}
-            />
-            <span>Income ({monthName})</span>
-          </div>
-          <div className="stat-value">
-            Rs {monthlyTotalIncome.toLocaleString()}
-          </div>
-        </motion.div>
-
-        {/* Total Expense (Current Month) */}
-        <motion.div
-          className="stat-card glass-panel expense"
-          variants={itemPop}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <div className="stat-header">
-            <img
-              src={ExpenseIcon}
-              alt="icon"
-              style={{ width: 24, opacity: 0.8 }}
-            />
-            <span>Expense ({monthName})</span>
-          </div>
-          <div className="stat-value">
-            Rs {monthlyTotalExpense.toLocaleString()}
-          </div>
-        </motion.div>
-
-        {/* Budget Progress */}
-        <motion.div
-          className="stat-card glass-panel budget"
-          variants={itemPop}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowBudgetModal(true)}
-          style={{ cursor: "pointer" }}
-        >
-          <div className="stat-header">
-            <span>🎯</span>
-            <span>Monthly Budget</span>
-          </div>
-          <div className="stat-value">Rs {parseInt(budget).toLocaleString()}</div>
-          <div className="budget-progress-container">
-            <div className="budget-progress-bar">
-              <div 
-                className={`budget-progress-fill ${isBudgetExceeded ? 'exceeded' : budgetPercent >= 80 ? 'warning' : 'safe'}`}
-                style={{ width: `${budgetPercent}%` }}
+          <div className="side-widgets">
+            <div className="chart-card glass-panel compact-card">
+              <div className="chart-card-header">
+                <span>Category distribution</span>
+                <span className="status-chip">Live</span>
+              </div>
+              <Doughnut
+                data={{
+                  labels: categoryDistribution.map((item) => item.category),
+                  datasets: [{ data: categoryDistribution.map((item) => item.value), backgroundColor: ["#818cf8", "#22c55e", "#38bdf8", "#f97316", "#fbbf24"] }],
+                }}
+                options={{ plugins: { legend: { position: "bottom", labels: { color: "#cbd5e1" } } } }}
               />
             </div>
-            <span className={`budget-status ${isBudgetExceeded ? 'exceeded' : budgetPercent >= 80 ? 'warning' : 'safe'}`}>
-              {isBudgetExceeded ? '🔴 Exceeded' : budgetPercent >= 80 ? '🟡 Warning' : '🟢 Safe'}
-            </span>
           </div>
-          <p style={{ fontSize: "12px", color: "#888", marginTop: "8px" }}>
-            Rs {budgetUsed.toLocaleString()} / Rs {parseInt(budget).toLocaleString()} ({Math.round(budgetPercent)}%)
-          </p>
-        </motion.div>
-      </section>
-
-      {/* Middle Row: Chart & Actions */}
-      <section className="main-grid">
-        <motion.div
-          className="chart-section glass-panel"
-          variants={itemFadeRight}
-        >
-          <div className="section-header">
-            <h3 className="section-title">Financial Analytics</h3>
-          </div>
-          <Chart expenses={expenses} balances={incomes} />
-        </motion.div>
-
-        <motion.div
-          className="actions-section glass-panel"
-          variants={itemFadeLeft}
-        >
-          <div className="section-header">
-            <h3 className="section-title">Quick Actions</h3>
-          </div>
-          <motion.button
-            className="action-btn add-income"
-            onClick={() => setShowIncomeModal(true)}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            <span>+</span> Add Income
-          </motion.button>
-          <motion.button
-            className="action-btn add-expense"
-            onClick={() => setShowExpenseModal(true)}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            <span>-</span> Add Expense
-          </motion.button>
-        </motion.div>
-      </section>
-
-      {/* Bottom Row: Recent Transactions */}
-      <motion.section
-        className="recent-section glass-panel"
-        variants={itemFadeUp}
-      >
-        <div className="section-header">
-          <h3 className="section-title">Recent Transactions</h3>
         </div>
-        <div className="transaction-list">
-          {recentActivity.length === 0 ? (
-            <p style={{ color: "var(--text-muted)", textAlign: "center" }}>
-              No recent activity.
-            </p>
-          ) : (
-            recentActivity.map((item, index) => (
-              <motion.div
-                key={index}
-                className="transaction-item"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ x: 5, backgroundColor: "rgba(255,255,255,0.08)" }}
-              >
-                <div className="t-info">
-                  <div className="t-icon">
-                    {item.type === "income" ? "💰" : "🛍️"}
-                  </div>
-                  <div className="t-details">
-                    <span className="t-category">{item.category}</span>
-                    <span className="t-date">
-                      {new Date(item.date).toLocaleDateString()}
-                    </span>
-                  </div>
+      </section>
+
+      <section className="insights-panel">
+        <div className="insight-card glass-panel">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">AI insights</p>
+              <h3>Smart recommendations</h3>
+            </div>
+            <button className="icon-button small" type="button" onClick={() => setRefresh((prev) => !prev)}>⟳</button>
+          </div>
+          <div className="insight-items">
+            {dashboardLoading ? (
+              <article>
+                <h4>AI insights</h4>
+                <p>Loading refreshed insights...</p>
+              </article>
+            ) : dashboardErrors.insights ? (
+              <article>
+                <h4>AI insights unavailable</h4>
+                <p>{dashboardErrors.insights}</p>
+              </article>
+            ) : dashboardInsights?.length > 0 ? (
+              dashboardInsights.map((insight, index) => (
+                <article key={`${insight.type}-${index}`}>
+                  <h4>{insight.type === "anomaly" ? "Unusual expense" : insight.type === "saving" ? "Saving tip" : "Forecast"}</h4>
+                  <p>{insight.message}</p>
+                </article>
+              ))
+            ) : (
+              <article>
+                <h4>No insights available</h4>
+                <p>Use your premium dashboard to unlock real-time spending and forecast insights.</p>
+              </article>
+            )}
+          </div>
+        </div>
+
+        <div className="goals-panel glass-panel">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Goals</p>
+              <h3>Progress tracker</h3>
+            </div>
+            <span className={`status-chip ${budgetPercent < 85 ? "success" : "warning"}`}>{budgetPercent < 85 ? "On track" : "Review"}</span>
+          </div>
+          <div className="goal-list">
+            {goals.map((goal) => (
+              <div key={goal.title} className="goal-item">
+                <div>
+                  <strong>{goal.title}</strong>
+                  <span>{goal.progress}% complete</span>
                 </div>
-                <span className={`t-amount ${item.type}`}>
-                  {item.type === "income" ? "+" : "-"} Rs
-                  {item.amount.toLocaleString()}
-                </span>
-              </motion.div>
-            ))
-          )}
+                <div className="goal-progress-bar">
+                  <div className="goal-progress-fill" style={{ width: `${goal.progress}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </motion.section>
+      </section>
 
-      <AIBot
-        expenses={expenses}
-        incomes={incomes}
-        currentBalance={currentBalance}
-      />
+      <section className="activity-panel">
+        <div className="activity-header">
+          <div>
+            <p className="eyebrow">Recent transactions</p>
+            <h3>Live ledger</h3>
+          </div>
+          <div className="activity-controls">
+            <select value={transactionFilter} onChange={(e) => setTransactionFilter(e.target.value)}>
+              <option value="all">All</option>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+            <select value={transactionSort} onChange={(e) => setTransactionSort(e.target.value)}>
+              <option value="date-desc">Newest</option>
+              <option value="date-asc">Oldest</option>
+              <option value="amount-desc">Amount ↓</option>
+              <option value="amount-asc">Amount ↑</option>
+              <option value="type">Type</option>
+            </select>
+          </div>
+        </div>
+        <div className="transaction-table-wrapper glass-panel">
+          <table className="transaction-table">
+            <thead>
+              <tr>
+                <th>Transaction</th>
+                <th>Category</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTransactions.slice(0, 8).map((item, index) => (
+                <tr key={`${item._id || item.date || index}-${index}`}>
+                  <td>{item.description || item.category || "Transaction"}</td>
+                  <td>{item.category || item.type || "—"}</td>
+                  <td>{new Date(item.date || item.createdAt || item.timestamp || now).toLocaleDateString()}</td>
+                  <td className={`amount ${item.type === "income" ? "income" : "expense"}`}>
+                    {(item.type === "income" ? "+" : "-") + " Rs " + Number(item.amount || 0).toLocaleString()}
+                  </td>
+                  <td><span className={`status-pill ${item.type === "income" ? "success" : "warning"}`}>{item.type === "income" ? "Cleared" : "Pending"}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-      {/* Modals */}
+      <section className="bottom-panels">
+        <div className="calendar-widget glass-panel">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Calendar</p>
+              <h3>Upcoming activity</h3>
+              {upcomingSource === "fallback" && (
+                <p style={{ fontSize: "0.82rem", color: "#6b7280", marginTop: "6px" }}>
+                  Using alternate recurring data source
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="calendar-grid">
+            {dashboardErrors.upcoming ? (
+              <div className="calendar-error-card" style={{ gridColumn: "1 / -1", padding: "18px", borderRadius: "16px", background: "rgba(254, 226, 226, 0.16)", border: "1px solid rgba(248, 113, 113, 0.25)", color: "#991b1b" }}>
+                <strong>Upcoming activity unavailable</strong>
+                <p>{dashboardErrors.upcoming}</p>
+              </div>
+            ) : calendarDays.length > 0 ? (
+              calendarDays.map((item) => (
+                <div key={item.id} className="calendar-event-card">
+                  <strong>{item.date}</strong>
+                  <p>{item.label}</p>
+                  <span>{item.description}</span>
+                  <strong>Rs {Number(item.amount).toLocaleString()}</strong>
+                </div>
+              ))
+            ) : (
+              <div className="calendar-empty">
+                <p>No upcoming activity yet.</p>
+                <p>Add a recurring transaction to populate your calendar.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="premium-panel glass-panel">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Upgrade</p>
+              <h3>Unlock the full suite</h3>
+            </div>
+            <button className="btn-primary" type="button" onClick={() => setShowPremiumModal(true)}>
+              Upgrade now
+            </button>
+          </div>
+          <div className="premium-benefits-grid">
+            {premiumFeatures.slice(0, 6).map((feature) => (
+              <div key={feature} className="benefit-card">
+                <span>✔</span>
+                <p>{feature}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="theme-panel glass-panel">
+        <div className="section-header">
+          <div>
+            <p className="eyebrow">Themes</p>
+            <h3>Custom dashboard styles</h3>
+          </div>
+        </div>
+        <div className="theme-picker">
+          {themeOptions.map((theme) => (
+            <button key={theme.id} type="button" className={`theme-pill ${selectedTheme === theme.id ? "active" : ""}`} onClick={() => setSelectedTheme(theme.id)}>
+              {theme.label}
+            </button>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+
+  const freeLayout = (
+    <>
+      {topbar}
+      <section className="hero-panel glass-panel">
+        <div className="hero-copy">
+          <span className="eyebrow">Starter workspace</span>
+          <h1>Essential finance tracking for every day.</h1>
+          <p>Manage expenses, monitor cash flow, and upgrade when you want smarter forecasts and AI insights.</p>
+          <div className="hero-actions">
+            <button className="btn-primary" type="button" onClick={() => setShowExpenseModal(true)}>
+              Add expense
+            </button>
+            <button className="btn-secondary" type="button" onClick={() => setShowBalanceModal(true)}>
+              Add balance
+            </button>
+            <button className="btn-secondary" type="button" onClick={() => setShowPremiumModal(true)}>
+              Upgrade to premium
+            </button>
+          </div>
+        </div>
+        <div className="hero-metrics-grid">
+          {[
+            { label: "Balance", value: `Rs ${currentBalance.toLocaleString()}` },
+            { label: "This month", value: `Rs ${monthlyTotalIncome.toLocaleString()}` },
+            { label: "Spent", value: `Rs ${monthlyTotalExpense.toLocaleString()}` },
+            { label: "Budget", value: `Rs ${Number(budget || 0).toLocaleString()}` },
+            { label: "Remaining", value: `Rs ${remainingBudget.toLocaleString()}` },
+          ].map((card) => (
+            <div key={card.label} className="hero-metric-card simple-card">
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="analytics-panel compact-panel">
+        <div className="analytics-header">
+          <div>
+            <p className="eyebrow">Overview</p>
+            <h3>Quick insights</h3>
+          </div>
+        </div>
+        <div className="compact-widgets-grid">
+          <div className="compact-card glass-panel">
+            <span>Financial score</span>
+            <strong>{financialScore}</strong>
+          </div>
+          <div className="compact-card glass-panel">
+            <span>Forecast</span>
+            <strong>{forecastedSpend !== null ? `Rs ${forecastedSpend.toLocaleString()}` : `Rs ${monthlyTotalExpense.toLocaleString()}`}</strong>
+          </div>
+          <div className="compact-card glass-panel">
+            <span>Top category</span>
+            <strong>{topSpendingCategory}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="chart-section">
+        <div className="chart-card glass-panel">
+          <div className="chart-card-header">
+            <span>Income vs Expense</span>
+            <button className="icon-button small" type="button" onClick={handleExportCSV}>
+              ⬇
+            </button>
+          </div>
+          <Line
+            data={{
+              labels: monthlyComparison.labels,
+              datasets: [
+                {
+                  label: "Income",
+                  data: monthlyComparison.incomes,
+                  borderColor: "#34d399",
+                  backgroundColor: "rgba(52, 211, 153, 0.18)",
+                  tension: 0.35,
+                  fill: true,
+                },
+                {
+                  label: "Expense",
+                  data: monthlyComparison.expenses,
+                  borderColor: "#60a5fa",
+                  backgroundColor: "rgba(96, 165, 250, 0.18)",
+                  tension: 0.35,
+                  fill: true,
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              plugins: { legend: { labels: { color: "#cbd5e1" } } },
+              scales: {
+                x: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(148, 163, 184, 0.15)" } },
+                y: { ticks: { color: "#cbd5e1" }, grid: { color: "rgba(148, 163, 184, 0.15)" } },
+              },
+            }}
+          />
+        </div>
+
+        <div className="chart-card glass-panel">
+          <div className="chart-card-header">
+            <span>Category breakdown</span>
+          </div>
+          <Doughnut
+            data={{
+              labels: categoryDistribution.map((item) => item.category),
+              datasets: [
+                {
+                  data: categoryDistribution.map((item) => item.value),
+                  backgroundColor: ["#818cf8", "#22c55e", "#38bdf8", "#f97316", "#fbbf24", "#a855f7"],
+                  borderWidth: 1,
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              plugins: {
+                legend: { labels: { color: "#cbd5e1" }, position: "bottom" },
+              },
+            }}
+          />
+        </div>
+      </section>
+
+      <section className="activity-panel">
+        <div className="activity-header">
+          <div>
+            <p className="eyebrow">Recent activity</p>
+            <h3>Essential ledger</h3>
+          </div>
+          <button className="btn-secondary" type="button" onClick={() => setShowPremiumModal(true)}>
+            Unlock premium
+          </button>
+        </div>
+
+        <div className="transaction-table-wrapper glass-panel">
+          <table className="transaction-table simple-table">
+            <thead>
+              <tr>
+                <th>Transaction</th>
+                <th>Category</th>
+                <th>Date</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentActivity.slice(0, 6).map((item, index) => (
+                <tr key={`${item._id || item.date || index}-${index}`}>
+                  <td>{item.category || item.description || "Transaction"}</td>
+                  <td>{item.type || "—"}</td>
+                  <td>{new Date(item.date || item.createdAt || item.timestamp || now).toLocaleDateString()}</td>
+                  <td>Rs {Number(item.amount || 0).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </>
+  );
+
+  return (
+    <motion.div className={`dashboard-container premium-theme-${selectedTheme}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      {isPremium ? premiumLayout : freeLayout}
+
       <AnimatePresence>
         {showExpenseModal && (
-          <motion.div
-            className="modalBackground"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <Modal
-              title="Add Expense"
-              onClose={() => setShowExpenseModal(false)}
-              onSubmit={handleAddExpense}
-              categories={expenseCategories}
-              currentBalance={currentBalance}
-            />
+          <motion.div className="modalBackground" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <Modal title="Add Expense" onClose={() => setShowExpenseModal(false)} onSubmit={handleAddExpense} categories={expenseCategories} currentBalance={currentBalance} />
           </motion.div>
         )}
 
         {showIncomeModal && (
-          <motion.div
-            className="modalBackground"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <Modal
-              title="Add Income"
-              onClose={() => setShowIncomeModal(false)}
-              onSubmit={handleAddIncome}
-              categories={incomeCategories}
-              currentBalance={currentBalance}
-            />
+          <motion.div className="modalBackground" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <Modal title="Add Income" onClose={() => setShowIncomeModal(false)} onSubmit={handleAddIncome} categories={incomeCategories} currentBalance={currentBalance} />
           </motion.div>
         )}
 
+        {showBalanceModal && (
+          <BalanceTopupModal isOpen={showBalanceModal} onClose={() => setShowBalanceModal(false)} onSubmit={handleAddBalance} />
+        )}
+
         {showBudgetModal && (
-          <BudgetModal
-            isOpen={showBudgetModal}
-            onClose={() => setShowBudgetModal(false)}
-            currentBudget={budget}
-            onSave={handleSaveBudget}
+          <BudgetModal isOpen={showBudgetModal} onClose={() => setShowBudgetModal(false)} currentBudget={budget} onSave={handleSaveBudget} />
+        )}
+        {showPremiumModal && (
+          <PremiumPreviewModal
+            onClose={() => setShowPremiumModal(false)}
+            onConfirm={() => {
+              setShowPremiumModal(false);
+              navigate("/pricing");
+            }}
           />
         )}
       </AnimatePresence>

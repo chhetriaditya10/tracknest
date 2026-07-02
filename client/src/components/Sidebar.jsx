@@ -35,7 +35,9 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/home", label: "Dashboard", icon: HomeIcon },
     { path: "/expenses", label: "Expenses", icon: ExpensesIcon },
     { path: "/incomes", label: "Incomes", icon: IncomesIcon },
+    { path: "/analytics", label: "Analytics", icon: HomeIcon },
     { path: "/settings", label: "Settings", icon: SettingsIcon },
+    ...(user?.isAdmin ? [{ path: "/admin", label: "🛡️ Admin", icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJzMTAtMTAgMjAtMTBTMTcuNTIgMiAxMiAyWk0xMiAyMEgxMVYyMUgxMlYyMFpNNC4yIDE0QzQuMjEgMTMuNzcgNC40NSAxMy41OCA0LjcyIDEzLjQ1TDUuMjUgMTMuMTRDNS4zIDEzLjA5IDUuMzMgMTMgNS40IDEyLjk4TDUuODMgMTIuNjZDNS45NSAxMi41NCA2LjA3IDEyLjQ1IDYuMTkgMTIuMzNMNi40IDEyLjFDNi41MSAxMi4wOSA2LjUxIDEyLjA5IDYuNTEgMTIuMDhMNyAxMS43OUw2LjUxIDExLjQ4TDYuNTEgMTEuNDhNNyAxMS4xNUw2LjUxIDExLjA0TDYuNTEgMTEuMDRNNyAwLjg1TDYuNTEgMC43NEw2LjUxIDAuNzRNNyAwLjIxTDYuNTEgMC4xMEw2LjUxIDAuMU01LjIzIDAuNDVDNC45NiAwLjU4IDQuNzQgMC43NyA0LjUyIDAuOThMNC4wOSAxLjI5QzMuOTYgMS40MiAzLjg0IDEuNTUgMy43MiAxLjY4TDMuMjkgMS45OUMzLjE3IDIuMTIgMi45NSAyLjI1IDIuNzMgMi4zN0wzLjE5IDIuODhDMy4zMSAzLjAxIDMuNDMgMy4xNCAzLjU1IDMuMjdMNyAxMC4zMUw3IDEwLjMxWk0xNyAxMC4zMUwxNyAxMC4zMUwxNyAxMC4zMU0xNyAxMC4zMUwxNyAxMC4zMU01LjIzIDAuNDVNNyAwLjg1TTcuNTEgMC43NEw2LjUxIDAuNzRNNyAwLjIxTTUuODMgMTIuNjZNNi4xOSAxMi4zM0w2LjQwIDEyLjExTDYuNTEgMTIuMDhNNyAxMS43OUw2LjUxIDExLjQ4TTcuNTEgMTEuMDRNNyAxMS4xNU0xNyAxMC4zMU0xNyAxMC4zMU0xNyAxMC4zMU0xNyAxMC3MzE0LjMwIDMuOTlaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K" }] : []),
   ];
 
   // Animation Variants
@@ -61,7 +63,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="mobile-overlay"
+            className={`mobile-overlay ${isOpen ? "open" : ""}`}
             onClick={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

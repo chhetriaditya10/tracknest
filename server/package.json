@@ -1,4 +1,21 @@
 {
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "jest",
+    "test:esm": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "seed": "node utils/seed-run.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
@@ -9,21 +26,15 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.16.1",
     "multer": "^2.0.2",
+    "node-cron": "^3.0.3",
     "nodemailer": "^8.0.7",
     "nodemon": "^3.1.10",
+    "stripe": "^12.18.0",
     "uuid": "^14.0.0"
   },
-  "name": "server",
-  "version": "1.0.0",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
-    "dev": "nodemon index.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^9.4.1",
+    "supertest": "^7.0.0"
+  }
 }

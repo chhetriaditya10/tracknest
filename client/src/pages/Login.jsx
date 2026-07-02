@@ -7,7 +7,7 @@ import TrackNest_Icon from "../assets/TrackNest Icon.png";
 import "../styles/Login.css";
 import { ClipLoader } from "react-spinners";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const BASE_URL = import.meta.env?.VITE_API_BASE_URL || "http://localhost:5000";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -40,10 +40,9 @@ const Login = () => {
     try {
       const res = await axios.post(`${BASE_URL}/api/auth/login`, formData);
       if (res.data.success) {
-        login(res.data.user);
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-        navigate("/home");
+        login(res.data.user, res.data.token);
+        const isAdminUser = Boolean(res.data.user?.isAdmin || res.data.user?.role === "admin");
+        navigate(isAdminUser ? "/admin" : "/home");
       }
     } catch (err) {
       setError(err.response?.data?.message || "Invalid email or password");

@@ -5,7 +5,7 @@ import ClipLoader from "react-spinners/ClipLoader";
 import { motion } from "framer-motion";
 import { exportToCSV, exportToPDF } from "../utils/exportUtils";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const BASE_URL = import.meta.env?.VITE_API_BASE_URL || "http://localhost:5000";
 
 const IncomesRecord = () => {
   const [incomes, setIncomes] = useState([]);

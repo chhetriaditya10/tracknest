@@ -1,5 +1,8 @@
 import ExpenseModel from "../models/Expenses.js";
 import ActivityModel from "../models/Activities.js";
+import BudgetModel from "../models/Budget.js";
+import RecurringTransaction from "../models/RecurringTransaction.js";
+
 // Add Expense
 export const addExpense = async (req, res) => {
   try {
@@ -13,13 +16,34 @@ export const addExpense = async (req, res) => {
     }
 
     // Save expense
+    const expenseDate = new Date(expense.date);
     const newExpense = new ExpenseModel({
       ...expense,
       userId: req.user.id,
-      createdAt: new Date(expense.date),
+      date: expenseDate,
+      month: `${expenseDate.getFullYear()}-${expenseDate.getMonth() + 1}`,
+      createdAt: expenseDate,
+      isRecurring: expense.isRecurring || false,
+      frequency: expense.isRecurring ? expense.frequency : null,
+      nextDueDate: expense.isRecurring ? new Date(expense.nextDueDate) : null,
     });
 
     const savedExpense = await newExpense.save();
+
+    const activeBudgets = await BudgetModel.find({ userId: req.user.id, isActive: true });
+    const expenseAmount = Number(expense.amount || 0);
+
+    if (activeBudgets.length > 0) {
+      await Promise.all(
+        activeBudgets.map((budget) =>
+          BudgetModel.findByIdAndUpdate(
+            budget._id,
+            { $inc: { spent: expenseAmount } },
+            { new: true }
+          )
+        )
+      );
+    }
 
     // ✅ Create activity record (server-side)
     const newActivity = new ActivityModel({

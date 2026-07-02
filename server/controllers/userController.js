@@ -13,6 +13,8 @@ import ActivityModel from "../models/Activities.js";
 
 dotenv.config();
 
+const jwtSecret = process.env.JWT_SECRET || "your_super_secret_jwt_key_change_in_production";
+
 const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
@@ -52,8 +54,16 @@ export const registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       isVerified: true, // Auto-verify since we skipped email check
+      role: "free",
+      plan: "free",
       isAdmin: false,
       profilePicture: "", // Default empty or set a default URL
+      theme: "dark",
+      preferences: {
+        currency: "NPR",
+        dateFormat: "DD/MM/YYYY",
+        timeZone: "Asia/Kathmandu",
+      },
     });
 
     await newUser.save();
@@ -90,13 +100,14 @@ export const loginUser = async (req, res) => {
         .json({ success: false, message: "Wrong Credentials" });
     }
 
-    const token = jwt.sign(
-      { id: user._id, isAdmin: user.isAdmin },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1d",
-      }
-    );
+    const tokenPayload = {
+      id: user._id,
+      role: user.role,
+      isAdmin: user.isAdmin,
+    };
+    const token = jwt.sign(tokenPayload, jwtSecret, {
+      expiresIn: "1d",
+    });
 
     return res.status(200).json({
       success: true,
@@ -105,8 +116,14 @@ export const loginUser = async (req, res) => {
         _id: user._id,
         username: user.username,
         email: user.email,
+        role: user.role,
         profilePicture: user.profilePicture,
         isAdmin: user.isAdmin,
+        subscriptionStatus: user.subscriptionStatus,
+        plan: user.plan,
+        premiumExpiresAt: user.premiumExpiresAt,
+        theme: user.theme,
+        preferences: user.preferences,
       },
     });
   } catch (error) {
@@ -129,7 +146,13 @@ export const verifyUser = async (req, res) => {
         username: user.username,
         email: user.email,
         profilePicture: user.profilePicture,
+        role: user.role,
         isAdmin: user.isAdmin,
+        subscriptionStatus: user.subscriptionStatus,
+        plan: user.plan,
+        premiumExpiresAt: user.premiumExpiresAt,
+        theme: user.theme,
+        preferences: user.preferences,
       },
     });
   } catch (error) {
@@ -181,7 +204,7 @@ export const updateUserProfile = async (req, res) => {
 export const getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      "username email profilePicture isAdmin"
+      "username email profilePicture role isAdmin subscriptionStatus plan premiumExpiresAt theme preferences balance"
     );
     return res.status(200).json({ success: true, user });
   } catch (err) {

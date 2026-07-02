@@ -3,16 +3,63 @@ import RecurringTransaction from "../models/RecurringTransaction.js";
 import Expenses from "../models/Expenses.js";
 import Incomes from "../models/Incomes.js";
 import { verifyToken } from "../middlewares/middleware.js";
+import {
+  calculateNextDueDate,
+  getUpcomingRecurringOccurrences,
+} from "../utils/recurringUtils.js";
 
+console.log("Loaded recurringRoutes.js");
 const router = express.Router();
 
 // Get all recurring transactions
 router.get("/getRecurring", verifyToken, async (req, res) => {
   try {
-    const recurring = await RecurringTransaction.find({ userId: req.user.id });
+    const [expenseRecurring, incomeRecurring] = await Promise.all([
+      Expenses.find({ userId: req.user.id, isRecurring: true }),
+      Incomes.find({ userId: req.user.id, isRecurring: true }),
+    ]);
+
+    const recurring = [...expenseRecurring, ...incomeRecurring]
+      .map((item) => ({
+        _id: item._id,
+        type: item.type || (item.amount >= 0 ? "expense" : "income"),
+        category: item.category,
+        description: item.description,
+        amount: item.amount,
+        frequency: item.frequency,
+        nextDueDate: item.nextDueDate,
+        isRecurring: item.isRecurring,
+      }))
+      .sort((a, b) => new Date(a.nextDueDate || a.date) - new Date(b.nextDueDate || b.date));
+
     res.status(200).json({ recurring });
   } catch (err) {
     res.status(500).json({ message: "Error fetching recurring transactions", error: err.message });
+  }
+});
+
+// Get upcoming recurring activity for dashboard
+router.get("/upcoming", verifyToken, async (req, res) => {
+  try {
+    const [expenseRecurring, incomeRecurring] = await Promise.all([
+      Expenses.find({ userId: req.user.id, isRecurring: true }),
+      Incomes.find({ userId: req.user.id, isRecurring: true }),
+    ]);
+
+    const allRecurring = [...expenseRecurring, ...incomeRecurring];
+    const upcoming = getUpcomingRecurringOccurrences(allRecurring, 90, 10);
+
+    if (!upcoming.length) {
+      return res.status(200).json({
+        success: true,
+        upcoming: [],
+        message: "No upcoming activity — add a recurring bill to get started.",
+      });
+    }
+
+    res.status(200).json({ success: true, upcoming });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching upcoming activity", error: err.message });
   }
 });
 
@@ -80,6 +127,45 @@ router.delete("/deleteRecurring/:id", verifyToken, async (req, res) => {
   }
 });
 
+// Pay a specific recurring bill/transaction and advance the next due date
+router.post("/pay/:id", verifyToken, async (req, res) => {
+  try {
+    const transaction = await RecurringTransaction.findById(req.params.id);
+    if (!transaction || transaction.userId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const now = new Date();
+    if (transaction.type === "expense") {
+      const newExpense = new Expenses({
+        userId: req.user.id,
+        category: transaction.category,
+        amount: transaction.amount,
+        description: transaction.description || `Recurring: ${transaction.description}`,
+        date: now,
+      });
+      await newExpense.save();
+    } else {
+      const newIncome = new Incomes({
+        userId: req.user.id,
+        category: transaction.category,
+        amount: transaction.amount,
+        description: transaction.description || `Recurring: ${transaction.description}`,
+        date: now,
+      });
+      await newIncome.save();
+    }
+
+    transaction.lastExecutedDate = now;
+    transaction.nextDueDate = calculateNextDueDate(now, transaction.frequency);
+    await transaction.save();
+
+    return res.status(200).json({ message: "Recurring transaction paid", transaction });
+  } catch (err) {
+    res.status(500).json({ message: "Error paying recurring transaction", error: err.message });
+  }
+});
+
 // Execute due recurring transactions
 router.post("/executeDue", verifyToken, async (req, res) => {
   try {
@@ -130,35 +216,5 @@ router.post("/executeDue", verifyToken, async (req, res) => {
     res.status(500).json({ message: "Error executing recurring transactions", error: err.message });
   }
 });
-
-// Helper function to calculate next due date
-function calculateNextDueDate(baseDate, frequency) {
-  const date = new Date(baseDate);
-
-  switch (frequency) {
-    case "daily":
-      date.setDate(date.getDate() + 1);
-      break;
-    case "weekly":
-      date.setDate(date.getDate() + 7);
-      break;
-    case "biweekly":
-      date.setDate(date.getDate() + 14);
-      break;
-    case "monthly":
-      date.setMonth(date.getMonth() + 1);
-      break;
-    case "quarterly":
-      date.setMonth(date.getMonth() + 3);
-      break;
-    case "yearly":
-      date.setFullYear(date.getFullYear() + 1);
-      break;
-    default:
-      date.setMonth(date.getMonth() + 1);
-  }
-
-  return date;
-}
 
 export default router;

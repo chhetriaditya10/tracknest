@@ -29,13 +29,29 @@ router.post("/createBudget", verifyToken, async (req, res) => {
   try {
     const { budgetName, budgetType, category, limit, period, alerts } = req.body;
 
+    if (!budgetName || !budgetType || limit === undefined || limit === null || !period) {
+      return res.status(400).json({
+        message: "budgetName, budgetType, limit, and period are required",
+      });
+    }
+
+    const parsedLimit = Number(limit);
+    if (isNaN(parsedLimit) || parsedLimit <= 0) {
+      return res.status(400).json({
+        message: "Budget limit must be a positive number",
+      });
+    }
+
+    const validPeriods = ["daily", "weekly", "month", "monthly", "quarterly", "yearly"];
+    const normalizedPeriod = validPeriods.includes(period) ? period : "monthly";
+
     const newBudget = new Budget({
       userId: req.user.id,
       budgetName,
       budgetType,
       category,
-      limit,
-      period,
+      limit: parsedLimit,
+      period: normalizedPeriod,
       alerts: alerts || [
         { threshold: 50, enabled: true, notificationMethod: "app" },
         { threshold: 80, enabled: true, notificationMethod: "app" },
