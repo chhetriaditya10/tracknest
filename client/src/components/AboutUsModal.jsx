@@ -6,7 +6,6 @@ import "../styles/AboutUs.css";
 import CloseIcon from "../assets/close-btn.png";
 import TrackNestLogo from "../assets/TrackNest Icon.png";
 import Rocket from "../assets/rocket.png";
-import Programmer from "../assets/programmer.png";
 
 // Feature Icons
 import AddView from "../assets/add and view.png";
@@ -16,11 +15,8 @@ import EditProfile from "../assets/edit profile.png";
 import PasswordRecovery from "../assets/password recovery.png";
 import Dashboard from "../assets/dashboard.png";
 
-// Social Icons
-import FB from "../assets/facebook.png";
-import IG from "../assets/instagram logo.png";
+// Social Icon
 import GitHub from "../assets/github logo.png";
-import Tiktok from "../assets/tik-tok logo.png";
 
 export const AboutUsModal = ({ onClose }) => {
   const features = [
@@ -50,79 +46,78 @@ export const AboutUsModal = ({ onClose }) => {
           </button>
         </div>
 
-        {/* Body Content */}
+        {/* Body */}
         <div className="aboutBody">
-          {/* Intro Section */}
+          {/* Intro */}
           <div className="aboutIntro">
-            <img src={TrackNestLogo} alt="TrackNest" className="appLogo" />
+            <img
+              src={TrackNestLogo}
+              alt="TrackNest"
+              className="appLogo"
+            />
             <p className="introText">
-              TrackNest is your personal finance companion. Simple, intuitive, and
-              designed to help you understand your spending habits effortlessly.
+              TrackNest is a modern personal finance management application
+              designed to help users monitor their income, expenses, and savings
+              with ease. It provides insightful analytics and an intuitive
+              dashboard to support better financial decision-making.
             </p>
           </div>
 
-          {/* Features Grid */}
+          {/* Features */}
           <div className="featuresSection">
             <h4>Key Features</h4>
             <div className="featuresGrid">
-              {features.map((feat, index) => (
+              {features.map((feature, index) => (
                 <div className="featureCard" key={index}>
-                  <img src={feat.icon} alt="feature" className="featureIcon" />
-                  <span className="featureText">{feat.text}</span>
+                  <img
+                    src={feature.icon}
+                    alt={feature.text}
+                    className="featureIcon"
+                  />
+                  <span className="featureText">{feature.text}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Mission Section */}
+          {/* Mission */}
           <div className="missionSection">
             <div className="missionHeader">
-              <img src={Rocket} alt="Rocket" className="rocketIcon" />
+              <img
+                src={Rocket}
+                alt="Rocket"
+                className="rocketIcon"
+              />
               <span>Our Mission</span>
             </div>
+
             <p className="missionText">
-              "To make money management accessible and stress-free for everyone,
-              regardless of financial background."
+              "To empower individuals with simple, secure, and intelligent tools
+              for managing their personal finances effectively."
             </p>
           </div>
 
-          {/* Footer / Developer Info */}
+          {/* Footer */}
           <div className="aboutFooter">
             <div className="devInfo">
-              <img src={Programmer} alt="Dev" className="devAvatar" />
               <p className="devText">
-                Designed & Developed by <strong>Sydney Santos</strong>
+                Designed & Developed by{" "}
+                <strong>Aditya Jung Chhetri</strong>
               </p>
             </div>
 
             <div className="socialLinks">
               <a
-                href="https://www.facebook.com/sydney.santos.7773"
+                href="https://github.com/chhetriaditya10/tracknest"
                 target="_blank"
                 rel="noreferrer"
+                title="TrackNest GitHub Repository"
               >
-                <img src={FB} alt="Facebook" className="socialIcon" />
-              </a>
-              <a
-                href="https://www.instagram.com/jst.sydd/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <img src={IG} alt="Instagram" className="socialIcon" />
-              </a>
-              <a
-                href="https://github.com/Syddevv"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <img src={GitHub} alt="GitHub" className="socialIcon" />
-              </a>
-              <a
-                href="https://www.tiktok.com/@sydd_dev"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <img src={Tiktok} alt="TikTok" className="socialIcon" />
+                <img
+                  src={GitHub}
+                  alt="GitHub"
+                  className="socialIcon"
+                />
               </a>
             </div>
           </div>
