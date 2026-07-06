@@ -20,6 +20,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import AdminDashboard from "./pages/AdminDashboard";
 import Home from "./pages/Home";
+import FreeDashboard from "./pages/FreeDashboard";
 import PremiumDashboard from "./pages/PremiumDashboard";
 import Pricing from "./pages/Pricing";
 import PremiumRoute from "./components/PremiumRoute";
@@ -29,6 +30,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 // Components
 import Sidebar from "./components/Sidebar";
 import AIAnalytics from "./components/AIAnalytics";
+import AiAdvisor from "./pages/AiAdvisor";
+import AiChat from "./pages/AiChat";
 
 // Analytics
 import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
@@ -126,9 +129,13 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
             {/* Dashboard Routes */}
-            <Route path="/home" element={<Home />} />
-            <Route path="/dashboard" element={<Home />} />
-            <Route path="/free" element={<Home />} />
+            <Route path="/home" element={
+              <ErrorBoundary>
+                <Home />
+              </ErrorBoundary>
+            } />
+            <Route path="/dashboard" element={<FreeDashboard />} />
+            <Route path="/free" element={<FreeDashboard />} />
             <Route path="/premium" element={<PremiumRoute />}>
               <Route index element={<PremiumDashboard />} />
             </Route>
@@ -149,6 +156,26 @@ function App() {
                 element={
                   <ErrorBoundary>
                     <AIAnalytics />
+                  </ErrorBoundary>
+                }
+              />
+            </Route>
+            <Route path="/ai-advisor" element={<PremiumRoute />}>
+              <Route
+                index
+                element={
+                  <ErrorBoundary>
+                    <AiAdvisor />
+                  </ErrorBoundary>
+                }
+              />
+            </Route>
+            <Route path="/ai-chat" element={<PremiumRoute />}>
+              <Route
+                index
+                element={
+                  <ErrorBoundary>
+                    <AiChat />
                   </ErrorBoundary>
                 }
               />

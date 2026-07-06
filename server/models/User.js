@@ -29,6 +29,7 @@ const UserSchema = new mongoose.Schema(
     balance: { type: Number, default: 0 },
     plan: { type: String, enum: ["free", "premium", "ultra", "admin"], default: "free" },
     premiumExpiresAt: { type: Date },
+    monthlyBudget: { type: Number, default: null },
   },
   { timestamps: true }
 );

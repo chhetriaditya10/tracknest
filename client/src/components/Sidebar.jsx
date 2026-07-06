@@ -36,9 +36,22 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/expenses", label: "Expenses", icon: ExpensesIcon },
     { path: "/incomes", label: "Incomes", icon: IncomesIcon },
     { path: "/analytics", label: "Analytics", icon: HomeIcon },
+    ...(user?.plan === "premium" || user?.isAdmin ? [{ path: "/ai-advisor", label: "AI Advisor", icon: HomeIcon }] : []),
     { path: "/settings", label: "Settings", icon: SettingsIcon },
     ...(user?.isAdmin ? [{ path: "/admin", label: "🛡️ Admin", icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJzMTAtMTAgMjAtMTBTMTcuNTIgMiAxMiAyWk0xMiAyMEgxMVYyMUgxMlYyMFpNNC4yIDE0QzQuMjEgMTMuNzcgNC40NSAxMy41OCA0LjcyIDEzLjQ1TDUuMjUgMTMuMTRDNS4zIDEzLjA5IDUuMzMgMTMgNS40IDEyLjk4TDUuODMgMTIuNjZDNS45NSAxMi41NCA2LjA3IDEyLjQ1IDYuMTkgMTIuMzNMNi40IDEyLjFDNi41MSAxMi4wOSA2LjUxIDEyLjA5IDYuNTEgMTIuMDhMNyAxMS43OUw2LjUxIDExLjQ4TDYuNTEgMTEuNDhNNyAxMS4xNUw2LjUxIDExLjA0TDYuNTEgMTEuMDRNNyAwLjg1TDYuNTEgMC43NEw2LjUxIDAuNzRNNyAwLjIxTDYuNTEgMC4xMEw2LjUxIDAuMU01LjIzIDAuNDVDNC45NiAwLjU4IDQuNzQgMC43NyA0LjUyIDAuOThMNC4wOSAxLjI5QzMuOTYgMS40MiAzLjg0IDEuNTUgMy43MiAxLjY4TDMuMjkgMS45OUMzLjE3IDIuMTIgMi45NSAyLjI1IDIuNzMgMi4zN0wzLjE5IDIuODhDMy4zMSAzLjAxIDMuNDMgMy4xNCAzLjU1IDMuMjdMNyAxMC4zMUw3IDEwLjMxWk0xNyAxMC4zMUwxNyAxMC4zMUwxNyAxMC4zMU0xNyAxMC4zMUwxNyAxMC4zMU01LjIzIDAuNDVNNyAwLjg1TTcuNTEgMC43NEw2LjUxIDAuNzRNNyAwLjIxTTUuODMgMTIuNjZNNi4xOSAxMi4zM0w2LjQwIDEyLjExTDYuNTEgMTIuMDhNNyAxMS43OUw2LjUxIDExLjQ4TTcuNTEgMTEuMDRNNyAxMS4xNU0xNyAxMC4zMU0xNyAxMC4zMU0xNyAxMC4zMU0xNyAxMC3MzE0LjMwIDMuOTlaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K" }] : []),
   ];
+
+  // Insert AI Chat item directly below AI Advisor when present
+  if ((user?.plan === 'premium' || user?.isAdmin)) {
+    const aiAdvisorIndex = navItems.findIndex((n) => n.path === '/ai-advisor');
+    const aiChatItem = { path: '/ai-chat', label: 'AI Chat', icon: HomeIcon };
+    if (aiAdvisorIndex !== -1) {
+      navItems.splice(aiAdvisorIndex + 1, 0, aiChatItem);
+    } else {
+      // fallback: add near top
+      navItems.splice(4, 0, aiChatItem);
+    }
+  }
 
   // Animation Variants
   const sidebarContentVariants = {

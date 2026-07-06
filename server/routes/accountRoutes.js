@@ -1,8 +1,31 @@
 import express from "express";
 import Account from "../models/Account.js";
+import User from "../models/User.js";
 import { verifyToken } from "../middlewares/middleware.js";
-
 const router = express.Router();
+
+// Get or update user's monthly budget
+router.get("/budget", verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("monthlyBudget");
+    return res.status(200).json({ monthlyBudget: user?.monthlyBudget ?? null });
+  } catch (err) {
+    return res.status(500).json({ message: "Error fetching budget", error: err.message });
+  }
+});
+
+router.post("/budget", verifyToken, async (req, res) => {
+  try {
+    const { monthlyBudget } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    user.monthlyBudget = monthlyBudget !== undefined && monthlyBudget !== null ? Number(monthlyBudget) : null;
+    await user.save();
+    return res.status(200).json({ monthlyBudget: user.monthlyBudget });
+  } catch (err) {
+    return res.status(500).json({ message: "Error updating budget", error: err.message });
+  }
+});
 
 // Get all accounts for user
 router.get("/getAccounts", verifyToken, async (req, res) => {

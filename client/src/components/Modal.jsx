@@ -82,11 +82,6 @@ const Modal = ({ title, onClose, onSubmit, categories, currentBalance }) => {
         frequency: isRecurring ? frequency : null,
         nextDueDate: isRecurring ? nextDueDate : null,
       });
-      {
-        title === "Add Income"
-          ? toast.success("Income added successfully")
-          : toast.success("Expense added successfully");
-      }
     } catch (err) {
       console.error(err);
       toast.error("An error occurred while saving.");

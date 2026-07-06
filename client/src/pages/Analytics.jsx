@@ -29,7 +29,7 @@ ChartJS.register(
 const BASE_URL = import.meta.env?.VITE_API_BASE_URL || "http://localhost:5000";
 
 const Analytics = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [analytics, setAnalytics] = useState(null);
   const [yearlyStats, setYearlyStats] = useState(null);
   const [forecast, setForecast] = useState(null);
@@ -173,12 +173,41 @@ const Analytics = () => {
         );
       }
 
-      if (budgetRes.status === "fulfilled") {
-        setBudgetSummary(budgetRes.value.data.summary);
+      let budgetSummaryData = null;
+
+      if (budgetRes.status === "fulfilled" && budgetRes.value.data?.summary) {
+        budgetSummaryData = budgetRes.value.data.summary;
       } else {
         console.error("Budget summary failed:", budgetRes.reason?.response?.data || budgetRes.reason?.message);
-        setBudgetSummary(null);
       }
+
+      const monthlyBudgetTarget = Number(user?.monthlyBudget || 0);
+      const monthlyExpense = analyticsRes.status === "fulfilled" ? analyticsRes.value.data.analytics?.totalExpense || 0 : 0;
+
+      if (monthlyBudgetTarget > 0) {
+        const percentage = Math.round((monthlyExpense / monthlyBudgetTarget) * 100);
+        const budgetStatus = monthlyExpense > monthlyBudgetTarget
+          ? "Exceeded"
+          : percentage >= 80
+            ? "Warning"
+            : "Safe";
+
+        budgetSummaryData = {
+          totalBudgets: 0,
+          totalLimit: monthlyBudgetTarget,
+          totalSpent: monthlyExpense,
+          thresholdPercentage: percentage,
+          budgetStatus,
+          warningMessage: monthlyExpense > monthlyBudgetTarget
+            ? `Budget exceeded by Rs ${monthlyExpense - monthlyBudgetTarget}`
+            : `You have used ${percentage}% of your budget`,
+          warningThreshold: 80,
+          remainingBudget: Math.max(monthlyBudgetTarget - monthlyExpense, 0),
+          exceededAmount: Math.max(monthlyExpense - monthlyBudgetTarget, 0),
+        };
+      }
+
+      setBudgetSummary(budgetSummaryData);
 
       const previousMonth = new Date(`${selectedMonth}-01`);
       previousMonth.setMonth(previousMonth.getMonth() - 1);
@@ -234,9 +263,17 @@ const Analytics = () => {
     ? analyticsSafe.totalExpense / analyticsSafe.dailySpending.length
     : 0;
   const cashFlow = analyticsSafe.totalIncome - analyticsSafe.totalExpense;
-  const budgetUtilization = budgetSummary?.totalLimit
-    ? Math.min((budgetSummary.totalSpent / budgetSummary.totalLimit) * 100, 100)
-    : 0;
+  const budgetUtilization = budgetSummary?.thresholdPercentage ?? 0;
+
+  const budgetStatusClass = budgetSummary?.budgetStatus === "Safe"
+    ? "budget-safe"
+    : budgetSummary?.budgetStatus === "Warning"
+      ? "budget-warning"
+      : budgetSummary?.budgetStatus === "Exceeded"
+        ? "budget-danger"
+        : "budget-neutral";
+
+  const budgetStatusLabel = budgetSummary?.budgetStatus || "No budget";
 
   const expenseTrendData = {
     labels: (analyticsSafe.dailySpending || []).map((d) =>
@@ -481,10 +518,29 @@ const Analytics = () => {
       </div>
 
       <div className="analytics-insights-grid">
-        <div className="insight-box" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+        <div className={`insight-box ${budgetStatusClass}`} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
           <h3>Budget Utilization</h3>
           <strong>{budgetSummary ? `${budgetUtilization.toFixed(1)}%` : "—"}</strong>
           <p>{budgetSummary ? `${budgetSummary.totalSpent.toLocaleString()} spent of ${budgetSummary.totalLimit.toLocaleString()}` : "No active budgets"}</p>
+          {budgetSummary ? (
+            <>
+              <div className="budget-status-row">
+                <span>Status</span>
+                <strong>{budgetStatusLabel}</strong>
+              </div>
+              <div className="budget-message">{budgetSummary.warningMessage}</div>
+              <div className="budget-details-grid">
+                <div>
+                  <span>Remaining Budget</span>
+                  <strong>Rs {budgetSummary.remainingBudget.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span>Exceeded Amount</span>
+                  <strong>Rs {budgetSummary.exceededAmount.toLocaleString()}</strong>
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
 
         <div className="insight-box" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>

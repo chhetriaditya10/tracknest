@@ -8,18 +8,33 @@ import "chart.js/auto";
 
 import LightDashboardSidebar from "../components/LightDashboardSidebar";
 import LightDashboardNavbar from "../components/LightDashboardNavbar";
+import BudgetModal from "../components/BudgetModal";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+const parseBudgetValue = (value) => {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim();
+  if (normalized === "") return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+};
+
 const LightDashboard = () => {
-  const { user, token } = useAuth();
+  const { user, token, setUser } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.innerWidth < 1024);
-  const [budget, setBudget] = useState(() => Number(localStorage.getItem("monthlyBudget")) || 50000);
+  const [budget, setBudget] = useState(() => {
+    const storedValue = localStorage.getItem("monthlyBudget");
+    if (storedValue === null) return 50000;
+    const parsedBudget = parseBudgetValue(storedValue);
+    return parsedBudget >= 0 ? parsedBudget : 50000;
+  });
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -33,6 +48,32 @@ const LightDashboard = () => {
       window.removeEventListener("resize", handleResize);
     };
   }, []);
+
+  useEffect(() => {
+    if (user?.monthlyBudget !== undefined) {
+      if (user.monthlyBudget === null) {
+        const storedBudget = parseBudgetValue(localStorage.getItem("monthlyBudget"));
+        if (storedBudget !== null) {
+          setBudget(storedBudget);
+        } else {
+          setBudget(50000);
+          try {
+            localStorage.removeItem("monthlyBudget");
+          } catch (e) {
+            console.warn("Failed to clear stored monthlyBudget", e);
+          }
+        }
+      } else {
+        const normalizedBudget = parseBudgetValue(user.monthlyBudget);
+        setBudget(normalizedBudget !== null ? normalizedBudget : 50000);
+        try {
+          localStorage.setItem("monthlyBudget", String(normalizedBudget));
+        } catch (e) {
+          console.warn("Failed to store monthlyBudget", e);
+        }
+      }
+    }
+  }, [user?.monthlyBudget]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -58,6 +99,34 @@ const LightDashboard = () => {
 
     fetchData();
   }, [refresh, token]);
+
+  const handleSaveBudget = async (newBudget) => {
+    const normalizedBudget = parseBudgetValue(newBudget);
+    if (normalizedBudget === null) {
+      toast.error("Please enter a valid monthly budget.");
+      return;
+    }
+    setBudget(normalizedBudget);
+    if (setUser) {
+      setUser((prev) => (prev ? { ...prev, monthlyBudget: normalizedBudget } : prev));
+    }
+    try {
+      localStorage.setItem("monthlyBudget", String(normalizedBudget));
+    } catch (e) {
+      console.warn("Failed to store monthlyBudget", e);
+    }
+    try {
+      const authToken = token || localStorage.getItem("token");
+      if (authToken) {
+        await axios.post(`${BASE_URL}/api/account/budget`, { monthlyBudget: normalizedBudget }, { headers: { Authorization: `Bearer ${authToken}` } });
+      }
+    } catch (err) {
+      console.warn("Failed to save budget to server", err?.message || err);
+    }
+    setShowBudgetModal(false);
+    setRefresh((prev) => !prev);
+    toast.success(`Budget updated: Rs ${normalizedBudget.toLocaleString()}`);
+  };
 
   const now = new Date();
   const monthlyExpenses = expenses.filter((item) => {
@@ -131,7 +200,10 @@ const LightDashboard = () => {
             <div className="dashboard-card p-6 h-full">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Total Balance</p>
               <p className="mt-4 text-3xl font-semibold text-slate-900">Rs {totalBalance.toLocaleString()}</p>
-              <span className="dashboard-pill mt-4 bg-emerald-50 text-emerald-700">+8% since last month</span>
+                <span className="dashboard-pill mt-4 bg-emerald-50 text-emerald-700">+8% since last month</span>
+                <div className="mt-3">
+                  <button className="btn-secondary" type="button" onClick={() => setShowBudgetModal(true)}>Set Budget</button>
+                </div>
             </div>
             <div className="dashboard-card p-6 h-full bg-[#fff7ed] border-[#fcd34d]">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Spent This Month</p>
@@ -141,6 +213,10 @@ const LightDashboard = () => {
             <div className="dashboard-card p-6 h-full">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Top Category</p>
               <p className="mt-4 text-3xl font-semibold text-slate-900">{topCategory || "No data yet"}</p>
+            </div>
+            <div className="dashboard-card p-6 h-full">
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Budget target</p>
+              <p className="mt-4 text-3xl font-semibold text-slate-900">Rs {Number(budget || 0).toLocaleString()}</p>
             </div>
             <div className="dashboard-card p-6 h-full">
               <div className="flex items-center justify-between">
@@ -305,6 +381,9 @@ const LightDashboard = () => {
             </div>
           </div>
         </main>
+        {showBudgetModal && (
+          <BudgetModal isOpen={showBudgetModal} onClose={() => setShowBudgetModal(false)} currentBudget={budget} onSave={handleSaveBudget} />
+        )}
       </div>
     </div>
   );

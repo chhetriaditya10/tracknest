@@ -61,6 +61,7 @@ const seedData = async ({ closeConnection = true } = {}) => {
         stripeCustomerId: "cus_john_doe",
         stripeSubscriptionId: "sub_john_premium",
         premiumExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+        monthlyBudget: 2500,
       },
       {
         username: "jane_smith",
@@ -78,6 +79,7 @@ const seedData = async ({ closeConnection = true } = {}) => {
         subscriptionStatus: "none",
         plan: "free",
         balance: 1800,
+        monthlyBudget: 0,
       },
       {
         username: "admin_user",
@@ -99,6 +101,7 @@ const seedData = async ({ closeConnection = true } = {}) => {
         stripeCustomerId: "cus_admin_user",
         stripeSubscriptionId: "sub_admin_ultra",
         premiumExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        monthlyBudget: 5000,
       },
     ];
 
@@ -288,6 +291,7 @@ const seedData = async ({ closeConnection = true } = {}) => {
         category: expense.category,
         amount: expense.amount,
         date: expense.date,
+        status: "completed",
       });
     }
 
@@ -299,6 +303,7 @@ const seedData = async ({ closeConnection = true } = {}) => {
         category: income.category,
         amount: income.amount,
         date: income.date,
+        status: "completed",
       });
     }
 

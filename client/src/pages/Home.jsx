@@ -12,14 +12,25 @@ import { Line, Doughnut, Bar } from "react-chartjs-2";
 import Modal from "../components/Modal";
 import BudgetModal from "../components/BudgetModal";
 import PremiumPreviewModal from "../components/PremiumPreviewModal";
-import BalanceTopupModal from "../components/BalanceTopupModal";
 import "../styles/HomePage.css";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+const parseBudgetValue = (value) => {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim();
+  if (normalized === "") return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+};
+
 const Home = () => {
-  const { user, token } = useAuth();
+  const { user, token, setUser } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    console.log("Home mounted", { user: user?.username, balance: user?.balance });
+  }, [user]);
 
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
@@ -28,10 +39,42 @@ const Home = () => {
   const [refresh, setRefresh] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showIncomeModal, setShowIncomeModal] = useState(false);
-  const [showBalanceModal, setShowBalanceModal] = useState(false);
+  
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [budget, setBudget] = useState(() => Number(localStorage.getItem("monthlyBudget")) || 50000);
+  const [budget, setBudget] = useState(() => {
+    const storedValue = localStorage.getItem("monthlyBudget");
+    const parsedBudget = parseBudgetValue(storedValue);
+    return parsedBudget !== null ? parsedBudget : 50000;
+  });
+
+  useEffect(() => {
+    if (!user) return;
+
+    const normalizedBudget = parseBudgetValue(user.monthlyBudget);
+    if (normalizedBudget !== null) {
+      setBudget(normalizedBudget);
+      try {
+        localStorage.setItem("monthlyBudget", String(normalizedBudget));
+      } catch (e) {
+        console.warn("Failed to store monthlyBudget", e);
+      }
+      return;
+    }
+
+    const storedBudget = parseBudgetValue(localStorage.getItem("monthlyBudget"));
+    if (storedBudget !== null) {
+      setBudget(storedBudget);
+      return;
+    }
+
+    setBudget(50000);
+    try {
+      localStorage.removeItem("monthlyBudget");
+    } catch (e) {
+      console.warn("Failed to clear stored monthlyBudget", e);
+    }
+  }, [user]);
   const [searchQuery, setSearchQuery] = useState("");
   const [transactionFilter, setTransactionFilter] = useState("all");
   const [transactionSort, setTransactionSort] = useState("date-desc");
@@ -241,7 +284,7 @@ const Home = () => {
 
   const allTimeExpenses = expenses.reduce((total, item) => total + Number(item.amount || 0), 0);
   const allTimeIncome = incomes.reduce((total, item) => total + Number(item.amount || 0), 0);
-  const currentBalance = dashboardBalance || allTimeIncome - allTimeExpenses;
+  const currentBalance = dashboardBalance ?? allTimeIncome - allTimeExpenses;
 
   const now = new Date();
   const monthlyExpenses = expenses.filter((item) => {
@@ -257,6 +300,8 @@ const Home = () => {
   const monthlyTotalIncome = monthlyIncomes.reduce((total, item) => total + Number(item.amount || 0), 0);
   const remainingBudget = Math.max(Number(budget || 0) - monthlyTotalExpense, 0);
   const budgetPercent = budget ? Math.min(Math.round((monthlyTotalExpense / budget) * 100), 200) : 0;
+  const budgetExceeded = budget > 0 && monthlyTotalExpense > budget;
+  const exceededAmount = budgetExceeded ? monthlyTotalExpense - budget : 0;
 
   const categoryTotals = expenses.reduce((totals, item) => {
     const category = item.category || "Others";
@@ -347,6 +392,14 @@ const Home = () => {
     try {
       const authToken = token || localStorage.getItem("token");
       await axios.post(`${BASE_URL}/api/expense/addExpense`, { expense: data }, { headers: { Authorization: `Bearer ${authToken}` } });
+      const expenseAmount = Number(data.amount || 0);
+      if (budget > 0 && monthlyTotalExpense + expenseAmount > budget) {
+        toast.warning(`Budget exceeded by Rs ${Math.max(monthlyTotalExpense + expenseAmount - budget, 0).toLocaleString()}`);
+      }
+      setDashboardBalance((prev) => Number(prev ?? allTimeIncome - allTimeExpenses) - expenseAmount);
+      if (setUser) {
+        setUser((prev) => prev ? { ...prev, balance: Number((prev.balance || 0) - expenseAmount) } : prev);
+      }
       setRefresh((prev) => !prev);
       setShowExpenseModal(false);
       toast.success("Expense added successfully.");
@@ -359,44 +412,55 @@ const Home = () => {
   const handleAddIncome = async (data) => {
     try {
       const authToken = token || localStorage.getItem("token");
-      await axios.post(`${BASE_URL}/api/balance/addBalance`, { balance: data }, { headers: { Authorization: `Bearer ${authToken}` } });
+      const response = await axios.post(`${BASE_URL}/api/balance`, data, { headers: { Authorization: `Bearer ${authToken}` } });
+      const updatedBalance = response.data?.balance;
+      if (updatedBalance !== undefined) {
+        setDashboardBalance(Number(updatedBalance));
+        if (setUser) {
+          setUser((prev) => prev ? { ...prev, balance: Number(updatedBalance) } : prev);
+        }
+      } else {
+        const incomeAmount = Number(data.amount || 0);
+        setDashboardBalance((prev) => Number(prev ?? allTimeIncome - allTimeExpenses) + incomeAmount);
+      }
       setRefresh((prev) => !prev);
       setShowIncomeModal(false);
       toast.success("Income added successfully.");
     } catch (error) {
-      console.error("Add income error", error);
-      toast.error("Unable to add income.");
+      console.error("Add income error", error, error?.response?.data);
+      const msg = error?.response?.data?.message || error?.message || "Unable to add income.";
+      toast.error(msg);
     }
   };
 
-  const handleAddBalance = async (data) => {
+
+
+  const handleSaveBudget = async (newBudget) => {
+    const normalizedBudget = parseBudgetValue(newBudget);
+    if (normalizedBudget === null) {
+      toast.error("Please enter a valid monthly budget.");
+      return;
+    }
+    setBudget(normalizedBudget);
+    if (setUser) {
+      setUser((prev) => (prev ? { ...prev, monthlyBudget: normalizedBudget } : prev));
+    }
+    try {
+      localStorage.setItem("monthlyBudget", String(normalizedBudget));
+    } catch (e) {
+      console.warn("Failed to store monthlyBudget", e);
+    }
     try {
       const authToken = token || localStorage.getItem("token");
-      if (!authToken) {
-        throw new Error("Please log in again to add balance.");
+      if (authToken) {
+        await axios.post(`${BASE_URL}/api/account/budget`, { monthlyBudget: normalizedBudget }, { headers: { Authorization: `Bearer ${authToken}` } });
       }
-
-      const response = await axios.patch(`${BASE_URL}/api/balance/topup`, data, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-
-      if (response?.data?.balance !== undefined) {
-        setDashboardBalance(Number(response.data.balance));
-      }
-      setRefresh((prev) => !prev);
-      setShowBalanceModal(false);
-      toast.success("Balance updated successfully.");
-    } catch (error) {
-      console.error("Add balance error", error);
-      throw error;
+    } catch (err) {
+      console.warn("Failed to save budget to server", err?.message || err);
     }
-  };
-
-  const handleSaveBudget = (newBudget) => {
-    setBudget(newBudget);
-    localStorage.setItem("monthlyBudget", newBudget);
     setShowBudgetModal(false);
-    toast.success("Budget updated.");
+    setRefresh((prev) => !prev);
+    toast.success(`Budget updated: Rs ${normalizedBudget.toLocaleString()}`);
   };
 
   const handleExportCSV = () => {
@@ -531,9 +595,6 @@ const Home = () => {
             <button className="btn-secondary" type="button" onClick={() => setShowIncomeModal(true)}>
               Add income
             </button>
-            <button className="btn-primary" type="button" onClick={() => setShowBalanceModal(true)}>
-              Add balance
-            </button>
             <button className="btn-secondary" type="button" onClick={() => setShowBudgetModal(true)}>
               Update budget
             </button>
@@ -544,6 +605,7 @@ const Home = () => {
             { label: "Total balance", value: `Rs ${currentBalance.toLocaleString()}` },
             { label: "Income this month", value: `Rs ${monthlyTotalIncome.toLocaleString()}` },
             { label: "Expense this month", value: `Rs ${monthlyTotalExpense.toLocaleString()}` },
+            { label: "Budget target", value: `Rs ${Number(budget || 0).toLocaleString()}` },
             { label: "Remaining", value: `Rs ${remainingBudget.toLocaleString()}` },
           ].map((card) => (
             <div key={card.label} className="hero-metric-card">
@@ -582,6 +644,11 @@ const Home = () => {
         <div style={{ height: "10px", background: "rgba(255,255,255,0.12)", borderRadius: "999px", overflow: "hidden" }}>
           <div style={{ width: `${Math.min(budgetPercent, 100)}%`, height: "100%", background: "linear-gradient(90deg, #8b5cf6, #22c55e)", borderRadius: "999px" }} />
         </div>
+        {budgetExceeded && (
+          <div style={{ marginTop: "16px", padding: "14px", borderRadius: "16px", background: "rgba(248, 113, 113, 0.12)", color: "#991b1b" }}>
+            <strong>Budget exceeded:</strong> You are over budget by Rs {exceededAmount.toLocaleString()}. Please review your spending.
+          </div>
+        )}
       </section>
 
       <section className="analytics-panel">
@@ -745,7 +812,13 @@ const Home = () => {
                   <td className={`amount ${item.type === "income" ? "income" : "expense"}`}>
                     {(item.type === "income" ? "+" : "-") + " Rs " + Number(item.amount || 0).toLocaleString()}
                   </td>
-                  <td><span className={`status-pill ${item.type === "income" ? "success" : "warning"}`}>{item.type === "income" ? "Cleared" : "Pending"}</span></td>
+                  <td>
+                    <span
+                      className={`status-pill ${item.status ? (item.status === "completed" ? "success" : "warning") : item.type === "income" ? "success" : "warning"}`}
+                    >
+                      {item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : item.type === "income" ? "Cleared" : "Pending"}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -840,9 +913,6 @@ const Home = () => {
           <div className="hero-actions">
             <button className="btn-primary" type="button" onClick={() => setShowExpenseModal(true)}>
               Add expense
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setShowBalanceModal(true)}>
-              Add balance
             </button>
             <button className="btn-secondary" type="button" onClick={() => setShowPremiumModal(true)}>
               Upgrade to premium
@@ -1008,9 +1078,7 @@ const Home = () => {
           </motion.div>
         )}
 
-        {showBalanceModal && (
-          <BalanceTopupModal isOpen={showBalanceModal} onClose={() => setShowBalanceModal(false)} onSubmit={handleAddBalance} />
-        )}
+        
 
         {showBudgetModal && (
           <BudgetModal isOpen={showBudgetModal} onClose={() => setShowBudgetModal(false)} currentBudget={budget} onSave={handleSaveBudget} />

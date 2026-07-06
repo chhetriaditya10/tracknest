@@ -11,6 +11,8 @@ import accountRouter from "./routes/accountRoutes.js";
 import budgetRouter from "./routes/budgetRoutes.js";
 import analyticsRouter from "./routes/analyticsRoutes.js";
 import recurringRouter from "./routes/recurringRoutes.js";
+import aiRouter from "./routes/aiRoutes.js";
+import aiChatRouter from "./routes/aiChatRoutes.js";
 import investmentRouter from "./routes/investmentRoutes.js";
 import goalRouter from "./routes/goalRoutes.js";
 import checkoutRouter, { handleStripeWebhook } from "./routes/checkoutRoutes.js";
@@ -71,6 +73,25 @@ app.use("/api/investment", investmentRouter);
 app.use("/api/goal", goalRouter);
 app.use("/api/checkout", checkoutRouter);
 app.use("/api/admin", adminRouter);
+// AI Financial Advisor routes
+app.use("/api/ai", aiRouter);
+// AI Chat Assistant routes
+app.use("/api/aichat", aiChatRouter);
+
+// Expose direct POST /api/balance for compatibility with clients that may not resolve router mounts correctly.
+app.post("/api/balance", (req, res, next) => {
+  // Forward to the mounted router by calling the same handler chain.
+  req.url = "/";
+  incomeRouter.handle(req, res, next);
+});
+
+// API 404 fallback returns JSON instead of HTML for missing API endpoints.
+app.use("/api", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `API endpoint not found: ${req.originalUrl}`,
+  });
+});
 
 // Root route (for Render health check)
 app.get("/", (req, res) => {

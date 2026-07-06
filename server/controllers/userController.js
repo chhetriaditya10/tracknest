@@ -35,7 +35,6 @@ export const registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ username }, { email }] });
     if (existingUser) {
       return res.status(400).json({
@@ -44,20 +43,18 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new user directly
     const newUser = new User({
       username,
       email,
       password: hashedPassword,
-      isVerified: true, // Auto-verify since we skipped email check
+      isVerified: true,
       role: "free",
       plan: "free",
       isAdmin: false,
-      profilePicture: "", // Default empty or set a default URL
+      profilePicture: "",
       theme: "dark",
       preferences: {
         currency: "NPR",
@@ -124,6 +121,8 @@ export const loginUser = async (req, res) => {
         premiumExpiresAt: user.premiumExpiresAt,
         theme: user.theme,
         preferences: user.preferences,
+        balance: user.balance, // FIX: was missing — Home.jsx reads user?.balance
+        monthlyBudget: user.monthlyBudget,
       },
     });
   } catch (error) {
@@ -153,6 +152,8 @@ export const verifyUser = async (req, res) => {
         premiumExpiresAt: user.premiumExpiresAt,
         theme: user.theme,
         preferences: user.preferences,
+        balance: user.balance, // FIX: was missing — this runs on every page refresh
+        monthlyBudget: user.monthlyBudget,
       },
     });
   } catch (error) {
@@ -204,7 +205,7 @@ export const updateUserProfile = async (req, res) => {
 export const getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      "username email profilePicture role isAdmin subscriptionStatus plan premiumExpiresAt theme preferences balance"
+      "username email profilePicture role isAdmin subscriptionStatus plan premiumExpiresAt theme preferences balance monthlyBudget"
     );
     return res.status(200).json({ success: true, user });
   } catch (err) {
@@ -243,19 +244,16 @@ export const changePassword = async (req, res) => {
 };
 
 export const changeEmail = async (req, res) => {
-  // 1. Extract 'newEmail' (matching the frontend), not 'email'
   const { newEmail } = req.body;
   const userId = req.user._id;
 
   try {
-    // 2. Validate 'newEmail'
     if (!newEmail) {
       return res
         .status(400)
         .json({ success: false, message: "Please provide an email address." });
     }
 
-    // 3. Check if 'newEmail' is already taken
     const emailExists = await User.findOne({ email: newEmail });
     if (emailExists && emailExists._id.toString() !== userId.toString()) {
       return res.status(400).json({
@@ -267,10 +265,7 @@ export const changeEmail = async (req, res) => {
     const user = await User.findById(userId);
 
     if (user) {
-      // 4. Update the user's email
       user.email = newEmail;
-
-      // OPTIONAL: If you want to force re-verification
       user.isVerified = false;
 
       const updatedUser = await user.save();
@@ -298,7 +293,7 @@ export const changeEmail = async (req, res) => {
 
 export const resetUserData = async (req, res) => {
   try {
-    const { type } = req.body; // 'expenses', 'incomes', 'all'
+    const { type } = req.body;
     const userId = req.user.id || req.user._id;
 
     if (!type) {

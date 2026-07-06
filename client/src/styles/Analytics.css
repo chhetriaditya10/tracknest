@@ -155,6 +155,66 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.budget-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.budget-message {
+  margin-top: 10px;
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.budget-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.budget-details-grid div {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.budget-details-grid span {
+  display: block;
+  color: rgba(226, 232, 240, 0.7);
+  margin-bottom: 6px;
+}
+
+.budget-details-grid strong {
+  color: var(--text-main);
+}
+
+.budget-safe {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.budget-warning {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.budget-danger {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.budget-neutral {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.08);
+}
+
 .insight-box h3 {
   margin-top: 0;
   font-size: 1.15rem;

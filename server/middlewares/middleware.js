@@ -5,7 +5,6 @@ const jwtSecret = process.env.JWT_SECRET || "your_super_secret_jwt_key_change_in
 
 export const verifyToken = async (req, res, next) => {
   try {
-    // Add this line:
     console.log("Authorization header:", req.headers.authorization);
 
     const token = req.headers.authorization?.split(" ")[1];
@@ -17,11 +16,9 @@ export const verifyToken = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, jwtSecret);
-
-    // Add debug logging
     console.log("Decoded token:", decoded);
 
-    const user = await User.findById(decoded.id); // Remove the { _id: } wrapper
+    const user = await User.findById(decoded.id);
     if (!user) {
       return res
         .status(401)
@@ -37,8 +34,9 @@ export const verifyToken = async (req, res, next) => {
       subscriptionStatus: user.subscriptionStatus,
       plan: user.plan,
       premiumExpiresAt: user.premiumExpiresAt,
+      monthlyBudget: user.monthlyBudget,
     };
-
+    console.log("Authenticated User ID:", user._id.toString());
     next();
   } catch (error) {
     console.error("Middleware error:", error.message);

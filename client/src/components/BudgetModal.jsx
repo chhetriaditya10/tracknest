@@ -1,16 +1,27 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import "../styles/Modal.css";
 
 const BudgetModal = ({ isOpen, onClose, currentBudget, onSave }) => {
-  const [budgetAmount, setBudgetAmount] = useState(currentBudget || 50000);
+  const [budgetAmount, setBudgetAmount] = useState(
+    currentBudget !== undefined && currentBudget !== null ? String(currentBudget) : "50000"
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setBudgetAmount(
+        currentBudget !== undefined && currentBudget !== null ? String(currentBudget) : "50000"
+      );
+    }
+  }, [isOpen, currentBudget]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (budgetAmount > 0) {
-      onSave(budgetAmount);
+    const normalizedBudget = parseFloat(budgetAmount);
+    if (!Number.isNaN(normalizedBudget) && normalizedBudget >= 0) {
+      onSave(normalizedBudget);
     }
   };
 
@@ -42,7 +53,7 @@ const BudgetModal = ({ isOpen, onClose, currentBudget, onSave }) => {
               className="input-field"
               value={budgetAmount}
               onChange={(e) => setBudgetAmount(e.target.value)}
-              min="100"
+              min="0"
               step="100"
               required
             />

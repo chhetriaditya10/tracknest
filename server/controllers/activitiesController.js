@@ -6,6 +6,7 @@ export const addActivity = async (req, res) => {
     const newActivity = new ActivityModel({
       ...activity,
       userId: req.user.id,
+      status: activity.status || "completed",
     });
 
     await newActivity.save();

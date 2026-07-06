@@ -7,15 +7,19 @@ const activitySchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    type: { type: String, required: true }, // 'expense' or 'income'
+    type: { type: String, required: true }, // 'expense', 'income', 'balance_topup'
     category: { type: String, required: true },
     amount: { type: Number, required: true },
     date: { type: Date, default: Date.now },
+    status: {
+      type: String,
+      enum: ["pending", "completed", "failed"],
+      default: "completed", // FIX: transactions are instant, so default to completed
+    },
   },
   {
     timestamps: true,
   }
 );
 
-const ActivityModel = mongoose.model("Activity", activitySchema);
-export default ActivityModel;
+export default mongoose.model("Activity", activitySchema);

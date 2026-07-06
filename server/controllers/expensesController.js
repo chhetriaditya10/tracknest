@@ -29,23 +29,14 @@ export const addExpense = async (req, res) => {
     });
 
     const savedExpense = await newExpense.save();
+    console.log("Expense created", {
+      expenseId: savedExpense._id?.toString(),
+      userId: req.user.id?.toString(),
+      category: expense.category,
+      amount: expense.amount,
+      date: expense.date,
+    });
 
-    const activeBudgets = await BudgetModel.find({ userId: req.user.id, isActive: true });
-    const expenseAmount = Number(expense.amount || 0);
-
-    if (activeBudgets.length > 0) {
-      await Promise.all(
-        activeBudgets.map((budget) =>
-          BudgetModel.findByIdAndUpdate(
-            budget._id,
-            { $inc: { spent: expenseAmount } },
-            { new: true }
-          )
-        )
-      );
-    }
-
-    // ✅ Create activity record (server-side)
     const newActivity = new ActivityModel({
       userId: req.user.id,
       type: "expense",
@@ -53,9 +44,26 @@ export const addExpense = async (req, res) => {
       amount: expense.amount,
       date: expense.date,
       referenceId: savedExpense._id,
+      status: "completed",
     });
 
     await newActivity.save();
+
+    // Update any active budgets for this user
+    try {
+      const activeBudgets = await BudgetModel.find({ userId: req.user.id, isActive: true });
+      await Promise.all(
+        activeBudgets.map((budget) =>
+          BudgetModel.findByIdAndUpdate(
+            budget._id,
+            { $inc: { spent: Number(expense.amount) || 0 } },
+            { new: true }
+          )
+        )
+      );
+    } catch (budgetError) {
+      console.warn("Failed to update active budgets after expense creation:", budgetError.message);
+    }
 
     return res.status(201).json({
       success: true,
